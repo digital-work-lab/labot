@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "labot"
+version = "0.1.0"
+description = "Labot (LAboratory BOT) supports handbook organizing, teaching, research etc."
+authors = ["Gerit Wagner <gerit.wagner@uni-bamberg.de>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "labot"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+[tool.poetry.scripts]
+labot = "labot.cli:main"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
