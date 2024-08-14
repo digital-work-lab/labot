@@ -39,6 +39,41 @@ def status(
     labot.status.print_status()
 
 
+@main.command  # (help_priority=1)
+@click.option(
+    "--grade",
+    is_flag=True,
+    default=False,
+    help="Grade a thesis",
+)
+@click.pass_context
+def thesis(
+    ctx: click.core.Context,
+    grade: bool,
+) -> None:
+    import labot.thesis
+
+    if grade:
+        labot.thesis.grade()
+
+
+@main.command  # (help_priority=1)
+@click.option(
+    "--init",
+    is_flag=True,
+    help="Initialize a paper repository",
+)
+@click.pass_context
+def paper(
+    ctx: click.core.Context,
+    init: bool,
+) -> None:
+    import labot.paper
+
+    if init:
+        labot.paper.init()
+
+
 # @main.command(help_priority=1)
 # @click.option(
 #     "--type",
