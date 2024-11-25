@@ -2,7 +2,6 @@
 """Command-line interface for Labot."""
 from __future__ import annotations
 
-
 import click
 import click_completion.core
 
@@ -14,6 +13,7 @@ def main(ctx: click.core.Context) -> None:
 
     \b
     status        Shows status, including tasks etc.
+    thesis        Thesis registration, grading, ...
 
     \b
     Documentation:  TODO
@@ -73,6 +73,31 @@ def paper(
     if init:
         labot.paper.init()
 
+@main.command  # (help_priority=1)
+@click.option(
+    "--links",
+    is_flag=True,
+    help="Check and update links (setting target=blank)",
+)
+@click.pass_context
+def handbook(
+    ctx: click.core.Context,
+    links: bool,
+) -> None:
+    import labot.handbook
+
+    if links:
+        labot.handbook.link_check()
+
+@main.command()
+@click.pass_context
+def check(
+    ctx: click.core.Context,
+) -> None:
+    """Check"""
+    import labot.check
+
+    labot.check.main()
 
 # @main.command(help_priority=1)
 # @click.option(
