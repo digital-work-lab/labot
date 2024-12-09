@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-"""Command-line interface for CoLRev."""
+"""Command-line interface for Labot."""
 from __future__ import annotations
 
 from pathlib import Path
