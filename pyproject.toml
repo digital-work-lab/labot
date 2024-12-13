@@ -15,6 +15,7 @@ click-completion = "^0.5.2"
 pre-commit = "^4.0.1"
 docx-mailmerge = "^0.5.0"
 requests = "^2.32.3"
+pygithub = "^2.5.0"
 
 [tool.poetry.scripts]
 labot = "labot.cli:main"
