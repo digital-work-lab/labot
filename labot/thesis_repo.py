@@ -3,6 +3,68 @@ import re
 import os
 import requests
 
+from docx import Document
+import re
+
+def clean_name(raw_name):
+    parts = raw_name.split(",")
+    if len(parts) == 2:
+        last_name = parts[0].replace(" ", "").strip()
+        first_name = parts[1].strip()
+        return f"{last_name}, {first_name}"
+    return raw_name.strip()
+
+def extract_information(text):
+    # Define regex patterns
+    name_pattern = r"Name:\s*([^\n]+)"
+    student_id_pattern = r"Matrikelnummer:\s*(\d+)"
+    topic_pattern = r"Englisch \(zur Aufnahme ins Zeugnis\):\n([^\n]+)"
+    date_pattern = r"Bamberg, den\s*([\d-]+)"
+
+    # Extract information
+    name_match = re.search(name_pattern, text)
+    student_id_match = re.search(student_id_pattern, text)
+    topic_match = re.search(topic_pattern, text)
+    date_match = re.search(date_pattern, text)
+
+    # Get the matched groups or default to None
+    raw_name = name_match.group(1).strip() if name_match else None
+    name = clean_name(raw_name) if raw_name else None
+    student_id = student_id_match.group(1) if student_id_match else None
+    topic = topic_match.group(1).strip() if topic_match else None
+    date = date_match.group(1) if date_match else None
+
+    # Return extracted information as a dictionary
+    return {
+        "Name": name,
+        "Student ID": student_id,
+        "Topic": topic,
+        "Date": date
+    }
+
+def extract_text_from_word(file_path):
+    try:
+        document = Document(file_path)
+        text = []
+
+        for paragraph in document.paragraphs:
+            text.append(paragraph.text)
+
+        # Join all paragraphs into a single string with line breaks
+        return "\n".join(text)
+
+    except Exception as e:
+        return f"An error occurred: {e}"
+
+def extract_word_info(file_path):
+
+    extracted_text = extract_text_from_word(file_path)
+    # print("\nExtracted Text:\n")
+    # print(extracted_text)
+    info = extract_information(extracted_text)
+    print(info)
+    return info
+
 
 # Create a pull-request with student details and word file, add issue-link in 
 # When merged: notify student in comment
@@ -53,7 +115,10 @@ def start_registration(issue_url):
                 with open(file.name, "wb") as f:
                     f.write(file_content)
 
-        issue.create_comment("Thank you. We have started the registration.")
+                info = extract_word_info(file.name)
+
+        info_string = "\n".join([f"- {key}: {value}" for key, value in info.items()])
+        issue.create_comment(f"Thank you. We have started the registration with the following information:\n {info_string}")
         print("Comment added to the issue.")
 
     except Exception as e:
@@ -94,7 +159,7 @@ def list_registration_issues(GITHUB_TOKEN):
             print(f"  Title: {issue['issue_title']}")
             print(f"  URL: {issue['issue_url']}\n")
             print("TODO : REINCLUDE:")
-            # start_registration(issue['issue_url'])
+            start_registration(issue['issue_url'])
     else:
         print("No issues found with '[registration]' in the title.")
 
