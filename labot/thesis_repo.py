@@ -3,10 +3,6 @@ import re
 import os
 import requests
 
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-if not GITHUB_TOKEN:
-    raise EnvironmentError("The GITHUB_TOKEN environment variable is not set or empty.")
-
 
 # Create a pull-request with student details and word file, add issue-link in 
 # When merged: notify student in comment
@@ -27,7 +23,9 @@ def parse_issue_body(issue_body):
     
     return parsed_data
 
-def start_registration(issue_url):
+
+
+def start_registration(issue_url):  
     g = Github(GITHUB_TOKEN)
 
     try:
@@ -62,7 +60,23 @@ def start_registration(issue_url):
         print(f"An error occurred: {e}")
 
 
-def list_registration_issues():
+def list_registration_issues(GITHUB_TOKEN):
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    url = "https://api.github.com/user/repos"
+    repos = []
+
+    while url:
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            raise Exception(f"Failed to fetch repositories: {response.status_code}, {response.text}")
+        repos.extend(response.json())
+        url = response.links.get('next', {}).get('url')
+
+    for repo in repos:
+        print(f"Name: {repo['name']}, Full Name: {repo['full_name']}, Private: {repo['private']}")
+
+
+def list_registration_issues_backup(GITHUB_TOKEN):
     g = Github(GITHUB_TOKEN)
     
     user = g.get_user()
@@ -104,4 +118,10 @@ if __name__ == "__main__":
     # Note: this is executed regularly in
     # https://github.com/digital-work-lab/theses-confidential
 
-    list_registration_issues()
+    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+    if not GITHUB_TOKEN:
+        raise EnvironmentError("The GITHUB_TOKEN environment variable is not set or empty.")
+
+
+
+    list_registration_issues(GITHUB_TOKEN)
