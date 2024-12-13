@@ -129,8 +129,12 @@ def start_registration(issue_url):
 
                 info = extract_word_info(file.name)
 
-        info_string = "\n".join([f"- {key}: {value}" for key, value in info.items()])
-        issue.create_comment(f"Thank you. We have started the registration with the following information:\n {info_string}\n\nPlease check whehter the information is correct and add a comment below if there are errors. Otherwise, close the isse.\n\nBest of luck with your thesis 🎓📚🍀🤞")
+        # Convert to Markdown Table
+        markdown_table = "| Key                | Value |\n"
+        markdown_table += "|--------------------|-------|\n"
+        for key, value in info.items():
+            markdown_table += f"| {key} | {value} |\n"
+        issue.create_comment(f"Thank you. We have started the registration with the following information:\n {markdown_table}\n\nPlease check whehter the information is correct and add a comment below if there are errors. Otherwise, close the isse.\n\nBest of luck with your thesis 🎓📚🍀🤞")
         # TODO : maybe post/add gantt?
         print("Comment added to the issue.")
 
