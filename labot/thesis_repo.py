@@ -20,12 +20,14 @@ def extract_information(text):
     student_id_pattern = r"Matrikelnummer:\s*(\d+)"
     topic_pattern = r"Englisch \(zur Aufnahme ins Zeugnis\):\n([^\n]+)"
     date_pattern = r"Bamberg, den\s*([\d-]+)"
+    work_time_pattern = r"(\d+)\s*Monate"
 
     # Extract information
     name_match = re.search(name_pattern, text)
     student_id_match = re.search(student_id_pattern, text)
-    topic_match = re.search(topic_pattern, text)
     date_match = re.search(date_pattern, text)
+    topic_match = re.search(topic_pattern, text)
+    work_time_match = re.search(work_time_pattern, text)
 
     # Get the matched groups or default to None
     raw_name = name_match.group(1).strip() if name_match else None
@@ -33,13 +35,16 @@ def extract_information(text):
     student_id = student_id_match.group(1) if student_id_match else None
     topic = topic_match.group(1).strip() if topic_match else None
     date = date_match.group(1) if date_match else None
+    work_time = work_time_match.group(1) if work_time_match else None
+    
 
     # Return extracted information as a dictionary
     return {
         "Name": name,
         "Student ID": student_id,
         "Topic": topic,
-        "Date": date
+        "Date": date,
+        "Work Time": work_time + " months"
     }
 
 def extract_text_from_word(file_path):
@@ -105,6 +110,13 @@ def start_registration(issue_url):
         print(f"Issue Title: {issue.title}")
         print(parse_issue_body(issue.body))
 
+        # Check comments for the specific message
+        comments = issue.get_comments()
+        for comment in comments:
+            if "started the registration" in comment.body:
+                print("Registration already started.")
+                return  # Exit the function if the comment is found
+
         # download all docx files from the repository
         # get all files in the repository
         files = repo.get_contents("")
@@ -118,7 +130,8 @@ def start_registration(issue_url):
                 info = extract_word_info(file.name)
 
         info_string = "\n".join([f"- {key}: {value}" for key, value in info.items()])
-        issue.create_comment(f"Thank you. We have started the registration with the following information:\n {info_string}")
+        issue.create_comment(f"Thank you. We have started the registration with the following information:\n {info_string}\n\nPlease check whehter the information is correct and add a comment below if there are errors. Otherwise, close the isse.\n\nBest of luck with your thesis 🎓📚🍀🤞")
+        # TODO : maybe post/add gantt?
         print("Comment added to the issue.")
 
     except Exception as e:
