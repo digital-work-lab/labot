@@ -61,7 +61,11 @@ def start_registration(issue_url):
 
 
 def list_registration_issues(GITHUB_TOKEN):
-    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    headers = {
+        "Accept": "application/vnd.github+json",  # Explicitly set the GitHub API version
+        "Authorization": f"Bearer {GITHUB_TOKEN}",  # Use 'Bearer' instead of 'token'
+        "X-GitHub-Api-Version": "2022-11-28"       # Specify the API version
+    }
     url = "https://api.github.com/user/repos"
     repos = []
 
@@ -70,11 +74,13 @@ def list_registration_issues(GITHUB_TOKEN):
         if response.status_code != 200:
             raise Exception(f"Failed to fetch repositories: {response.status_code}, {response.text}")
         repos.extend(response.json())
-        url = response.links.get('next', {}).get('url')
+        url = response.links.get('next', {}).get('url')  # Handle pagination
+
 
     for repo in repos:
         print(f"Name: {repo['name']}, Full Name: {repo['full_name']}, Private: {repo['private']}")
 
+    return repos
 
 def list_registration_issues_backup(GITHUB_TOKEN):
     g = Github(GITHUB_TOKEN)
@@ -114,6 +120,27 @@ def list_registration_issues_backup(GITHUB_TOKEN):
     else:
         print("No issues found with '[registration]' in the title.")
 
+def check_token_permissions(GITHUB_TOKEN):
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "X-GitHub-Api-Version": "2022-11-28"
+    }
+    url = "https://api.github.com/user"
+
+    # Make the API call
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        raise Exception(f"Failed to fetch user info: {response.status_code}, {response.text}")
+
+    print("Authenticated User Info:")
+    print(response.json())
+
+    # Fetch scopes from rate limit headers
+    scopes = response.headers.get("X-OAuth-Scopes", "No scopes found")
+    print("\nToken Permissions (Scopes):")
+    print(scopes)
+
 if __name__ == "__main__":
     # Note: this is executed regularly in
     # https://github.com/digital-work-lab/theses-confidential
@@ -123,5 +150,5 @@ if __name__ == "__main__":
         raise EnvironmentError("The GITHUB_TOKEN environment variable is not set or empty.")
 
 
-
+    check_token_permissions(GITHUB_TOKEN)
     list_registration_issues(GITHUB_TOKEN)
