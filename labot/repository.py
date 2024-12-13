@@ -62,6 +62,25 @@ def run_research_repo_checks():
         print("No 'paper.md' file found in the repository.")
         VALID = False
 
+def run_teaching_repo_checks():
+    """Run checks specific to teaching repositories."""
+
+    # Require a reset_course.yml workflow
+
+    workflows_url = f"{BASE_URL}/repos/{REPO_OWNER}/{REPO_NAME}/actions/workflows"
+    response = requests.get(workflows_url, headers=HEADERS)
+
+    if response.status_code != 200:
+        print(f"Error fetching workflows: {response.json()}")
+        VALID = False
+    
+    workflows = response.json().get('workflows', [])
+    workflow_names = [workflow['name'] for workflow in workflows]
+
+    if ".github/workflows/reset_course.yml" not in workflow_names:
+        print("No 'reset_course.yml' workflow found.")
+        VALID = False
+
 
 def main():
     """Main function."""
@@ -72,7 +91,10 @@ def main():
 
     if "research" in topics:
         run_research_repo_checks()
-    
+    if "teaching-material" in topics:
+        run_teaching_repo_checks()
+
+
     if VALID:
         sys.exit(0)
     else:
