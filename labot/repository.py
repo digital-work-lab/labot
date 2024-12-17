@@ -42,9 +42,9 @@ def get_repo_topics(owner, repo_name):
     topics = response.json().get('names', [])
     return topics
 
-def _update_labot_file(repo_path):
+def _update_labot_file():
     # Define the file paths
-    labot_repo_file = os.path.join(repo_path, "labot.yml")
+    labot_repo_file = os.path.join(os.getcwd(), "labot.yml")
     labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
     
     # Check if the files are different
@@ -134,8 +134,8 @@ def _colrev_sync_references():
 
     # Create a pull request
     pr = repo_github.create_pull(
-        title="New Pull Request",
-        body="This is an automated PR created by Python script",
+        title="ColRev Sync",
+        body="This PR was created using the colrev-sync command.",
         head=new_branch,
         base="main"
     )

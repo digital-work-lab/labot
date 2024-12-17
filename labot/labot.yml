@@ -1,4 +1,4 @@
-name: Labot checks
+name: Labot
 
 on:
   workflow_dispatch:
