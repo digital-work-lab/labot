@@ -9,7 +9,6 @@ from git import Repo
 from datetime import datetime
 import pkgutil
 import hashlib
-from pathlib import Path
 
 # Set up GitHub API URL and token
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")  # GitHub token should be set in the environment variable
@@ -51,7 +50,7 @@ def _update_labot_file():
     # labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
     # labot_package_file = pkg_resources.resource_filename('labot', 'labot/labot.yml')
 
-    labot_local_file = Path(__file__).parent / "labot.yml"
+    labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
     labot_package_data = pkgutil.get_data("labot", "data/labot.yml")
 
     # Function to compute file hash
