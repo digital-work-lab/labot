@@ -81,8 +81,8 @@ def _colrev_sync_references():
 
     BRANCH_NAME = "colrev_update"
     # Create a new branch (if needed)
-    base = repo.get_branch("main")
-    repo.create_git_ref(ref=f"refs/heads/{BRANCH_NAME}", sha=base.commit.sha)
+    main_branch = repo.head.reference.name
+    repo.create_git_ref(ref=f"refs/heads/{BRANCH_NAME}", sha=main_branch.commit.sha)
 
     # Run the colrev-sync command
     try:
