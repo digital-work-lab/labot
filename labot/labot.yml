@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main  # Trigger the workflow on push to the main branch
+      - main
   pull_request:
     branches:
-      - main  # Trigger the workflow on pull request targeting the main branch
+      - main
 
 jobs:
   install-and-run:
-    runs-on: ubuntu-latest  # Use the latest Ubuntu environment
+    runs-on: ubuntu-latest
     
     steps:
       - name: Checkout repository

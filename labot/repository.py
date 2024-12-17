@@ -48,8 +48,8 @@ def get_repo_topics(owner, repo_name):
 def _update_labot_file():
     # Define the file paths
     labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
-    labot_package_file = pkg_resources.resource_filename('labot', 'labot.yml')
-    
+    labot_package_file = pkg_resources.resource_filename('labot', 'labot/labot.yml')
+
     # Check if the files are different
     if not filecmp.cmp(labot_local_file, labot_package_file, shallow=False):
         print("Files differ. Replacing and committing changes.")
