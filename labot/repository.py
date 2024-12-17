@@ -73,9 +73,6 @@ def _update_labot_file(repo_path):
 
 def _colrev_sync_references():
 
-    # Authenticate using a GitHub token
-    g = Github(GITHUB_TOKEN)
-
     # Get the repository
     repo = Repo(os.getcwd())
 
@@ -111,8 +108,13 @@ def _colrev_sync_references():
         print("Error:\n", e.stderr)
 
 
+    # Authenticate using a GitHub token
+    g = Github(GITHUB_TOKEN)
+    repo_name = f"{REPO_OWNER}/{REPO_NAME}"
+    repo_github = g.get_repo(repo_name)
+
     # Create a pull request
-    pr = repo.create_pull(
+    pr = repo_github.create_pull(
         title="New Pull Request",
         body="This is an automated PR created by Python script",
         head=new_branch,
