@@ -83,6 +83,7 @@ def _update_labot_file():
 
         # Commit the change
         repo.index.commit("Update labot.yml file")
+        print(repo.git.status())
 
         # Push the changes to the main branch
         origin = repo.remotes.origin
