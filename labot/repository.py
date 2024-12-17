@@ -66,14 +66,15 @@ def _update_labot_file():
     if labot_local_hash != labot_package_hash:
         print("Files differ. Replacing and committing changes.")
         
-        # Replace the labot.yml in the repo with the one from the local directory
-        os.replace(labot_local_file, labot_repo_file)
+        # write labot_package_data to labot_local_file
+        with open(labot_local_file, "wb") as f:
+            f.write(labot_package_data)
 
         # Initialize the repository using gitpython
         repo = Repo(os.getcwd())
 
         # Check for untracked files or changes
-        repo.git.add(labot_repo_file)  # Stage the file for commit
+        repo.git.add(labot_local_file)  # Stage the file for commit
 
         # Commit the change
         repo.index.commit("Update labot.yml file")
