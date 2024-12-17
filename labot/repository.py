@@ -79,10 +79,15 @@ def _colrev_sync_references():
     # Get the repository
     repo = Repo(os.getcwd())
 
-    BRANCH_NAME = "colrev_update"
-    # Create a new branch (if needed)
-    main_branch = repo.head.reference.name
-    repo.create_git_ref(ref=f"refs/heads/{BRANCH_NAME}", sha=main_branch.commit.sha)
+    new_branch = 'colrev-update'
+    if new_branch not in repo.heads:
+        new_branch_ref = repo.create_head(new_branch, repo.head.commit)  # Create the new branch from the current commit
+        new_branch_ref.checkout()  # Checkout the new branch
+        print(f"New branch '{new_branch}' created and checked out.")
+    else:
+        new_branch_ref = repo.heads[new_branch]
+        new_branch_ref.checkout()
+        print(f"Branch '{new_branch}' already exists. Checked out.")
 
     # Run the colrev-sync command
     try:
@@ -110,7 +115,7 @@ def _colrev_sync_references():
     pr = repo.create_pull(
         title="New Pull Request",
         body="This is an automated PR created by Python script",
-        head=BRANCH_NAME,
+        head=new_branch,
         base="main"
     )
     print(f"Pull Request created: {pr.html_url}")
