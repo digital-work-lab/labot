@@ -5,6 +5,7 @@ import os
 import requests
 import subprocess
 from github import Github
+from git import Repo
 
 # Set up GitHub API URL and token
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")  # GitHub token should be set in the environment variable
