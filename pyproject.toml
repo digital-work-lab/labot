@@ -24,7 +24,7 @@ labot = "labot.cli:main"
 
 [tool.poetry.package]
 include = [
-    { path = "labot/labot.yml", format = "file" }
+    { path = "labot/data/labot.yml", format = "file" }
 ]
 
 [build-system]
