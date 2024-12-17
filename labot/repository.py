@@ -89,25 +89,6 @@ def _update_labot_file():
 
 def _colrev_sync_references():
 
-    # Get the repository
-    repo = Repo(os.getcwd())
-
-    # should be colrev-update-2024-12-17-12-00-00
-    new_branch = f"colrev-update-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-
-    if new_branch not in repo.heads:
-        new_branch_ref = repo.create_head(new_branch, repo.head.commit)  # Create the new branch from the current commit
-        new_branch_ref.checkout()  # Checkout the new branch
-        print(f"New branch '{new_branch}' created and checked out.")
-    else:
-        new_branch_ref = repo.heads[new_branch]
-        new_branch_ref.checkout()
-        print(f"Branch '{new_branch}' already exists. Checked out.")
-
-    # Push the new branch to GitHub
-    origin = repo.remotes.origin
-    origin.push(new_branch)
-    print(f"Branch '{new_branch}' pushed to GitHub.")
 
     # Run the colrev-sync command
     try:
@@ -132,6 +113,25 @@ def _colrev_sync_references():
 
     # Check if there are any changes before creating the PR
     if repo.is_dirty(untracked_files=True):
+        # Get the repository
+        repo = Repo(os.getcwd())
+
+        # should be colrev-update-2024-12-17-12-00-00
+        new_branch = f"colrev-update-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+
+        if new_branch not in repo.heads:
+            new_branch_ref = repo.create_head(new_branch, repo.head.commit)  # Create the new branch from the current commit
+            new_branch_ref.checkout()  # Checkout the new branch
+            print(f"New branch '{new_branch}' created and checked out.")
+        else:
+            new_branch_ref = repo.heads[new_branch]
+            new_branch_ref.checkout()
+            print(f"Branch '{new_branch}' already exists. Checked out.")
+
+        # Push the new branch to GitHub
+        origin = repo.remotes.origin
+        origin.push(new_branch)
+        print(f"Branch '{new_branch}' pushed to GitHub.")
         # add all changes
         repo.git.add("--all")
 
@@ -141,23 +141,26 @@ def _colrev_sync_references():
         # Push the changes to the new branch again
         origin.push(new_branch)
         print(f"Changes pushed to {new_branch}.")
+        # Authenticate using a GitHub token
+        g = Github(GITHUB_TOKEN)
+        repo_name = f"{REPO_OWNER}/{REPO_NAME}"
+        repo_github = g.get_repo(repo_name)
+
+        # Create a pull request
+        pr = repo_github.create_pull(
+            title="ColRev Sync",
+            body="This PR was created using the colrev-sync command.",
+            head=new_branch,
+            base="main"
+        )
+        print(f"Pull Request created: {pr.html_url}")
+
+        # switch to main
+        repo.heads.main.checkout()
     else:
         print("No changes found in the branch. Skipping PR creation.")
         return
 
-    # Authenticate using a GitHub token
-    g = Github(GITHUB_TOKEN)
-    repo_name = f"{REPO_OWNER}/{REPO_NAME}"
-    repo_github = g.get_repo(repo_name)
-
-    # Create a pull request
-    pr = repo_github.create_pull(
-        title="ColRev Sync",
-        body="This PR was created using the colrev-sync command.",
-        head=new_branch,
-        base="main"
-    )
-    print(f"Pull Request created: {pr.html_url}")
 
 def run_research_repo_checks():
     """Run checks specific to research repositories."""
