@@ -86,6 +86,11 @@ def _colrev_sync_references():
         new_branch_ref.checkout()
         print(f"Branch '{new_branch}' already exists. Checked out.")
 
+    # Push the new branch to GitHub
+    origin = repo.remotes.origin
+    origin.push(new_branch)
+    print(f"Branch '{new_branch}' pushed to GitHub.")
+
     # Run the colrev-sync command
     try:
         # Run the colrev-sync command and capture the output
