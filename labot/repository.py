@@ -6,6 +6,8 @@ import requests
 import subprocess
 from github import Github
 from git import Repo
+from datetime import datetime
+import filecmp
 
 # Set up GitHub API URL and token
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")  # GitHub token should be set in the environment variable
@@ -76,7 +78,9 @@ def _colrev_sync_references():
     # Get the repository
     repo = Repo(os.getcwd())
 
-    new_branch = 'colrev-update'
+    # should be colrev-update-2024-12-17-12-00-00
+    new_branch = f"colrev-update-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+
     if new_branch not in repo.heads:
         new_branch_ref = repo.create_head(new_branch, repo.head.commit)  # Create the new branch from the current commit
         new_branch_ref.checkout()  # Checkout the new branch
