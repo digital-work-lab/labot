@@ -51,7 +51,7 @@ def _update_labot_file():
     # labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
     # labot_package_file = pkg_resources.resource_filename('labot', 'labot/labot.yml')
 
-    labot_local_file = Path(".github/workflows/labot.yml)
+    labot_local_file = Path(".github/workflows/labot.yml")
     labot_package_data = pkgutil.get_data("labot", "data/labot.yml")
 
     # Function to compute file hash
