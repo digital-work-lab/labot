@@ -112,6 +112,17 @@ def _colrev_sync_references():
         print("Output:\n", e.stdout)
         print("Error:\n", e.stderr)
 
+    # Check if there are any changes before creating the PR
+    if repo.is_dirty(untracked_files=True):
+        # Create a commit for the changes
+        repo.index.commit("Sync changes using colrev-sync")
+
+        # Push the changes to the new branch again
+        origin.push(new_branch)
+        print(f"Changes pushed to {new_branch}.")
+    else:
+        print("No changes found in the branch. Skipping PR creation.")
+        return
 
     # Authenticate using a GitHub token
     g = Github(GITHUB_TOKEN)
