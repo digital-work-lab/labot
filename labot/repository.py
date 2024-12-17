@@ -8,6 +8,7 @@ from github import Github
 from git import Repo
 from datetime import datetime
 import filecmp
+import pkg_resources
 
 # Set up GitHub API URL and token
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")  # GitHub token should be set in the environment variable
@@ -46,11 +47,11 @@ def get_repo_topics(owner, repo_name):
 
 def _update_labot_file():
     # Define the file paths
-    labot_repo_file = os.path.join(os.getcwd(), "labot.yml")
     labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
+    labot_package_file = pkg_resources.resource_filename('labot', 'labot.yml')
     
     # Check if the files are different
-    if not filecmp.cmp(labot_local_file, labot_repo_file, shallow=False):
+    if not filecmp.cmp(labot_local_file, labot_package_file, shallow=False):
         print("Files differ. Replacing and committing changes.")
         
         # Replace the labot.yml in the repo with the one from the local directory
