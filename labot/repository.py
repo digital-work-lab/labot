@@ -72,6 +72,7 @@ def _update_labot_file():
 
         # Initialize the repository using gitpython
         repo = Repo(os.getcwd())
+        repo.heads.main.checkout()
 
         # Check for untracked files or changes
         repo.git.add(labot_local_file)  # Stage the file for commit
@@ -85,7 +86,7 @@ def _update_labot_file():
 
         # Push the changes to the main branch
         origin = repo.remotes.origin
-        origin.push("main")
+        origin.push(refspec="HEAD:main")
 
         print("Changes pushed to main.")
     else:
