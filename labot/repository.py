@@ -76,6 +76,10 @@ def _update_labot_file():
         # Check for untracked files or changes
         repo.git.add(labot_local_file)  # Stage the file for commit
 
+        # print current branch and git status
+        print(f"Current branch: {repo.active_branch}")
+        print(repo.git.status())
+
         # Commit the change
         repo.index.commit("Update labot.yml file")
 
