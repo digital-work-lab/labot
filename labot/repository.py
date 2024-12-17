@@ -114,6 +114,9 @@ def _colrev_sync_references():
 
     # Check if there are any changes before creating the PR
     if repo.is_dirty(untracked_files=True):
+        # add all changes
+        repo.git.add("--all")
+
         # Create a commit for the changes
         repo.index.commit("Sync changes using colrev-sync")
 
