@@ -87,7 +87,13 @@ def _update_labot_file():
 
         # Push the changes to the main branch
         origin = repo.remotes.origin
-        origin.push(refspec="HEAD:main")
+        push_result = origin.push(refspec="HEAD:main")
+
+        for result in push_result:
+            print(f"Push status: {result.summary}")
+            if result.flags & result.ERROR:
+                print("Push error:", result.error)
+
 
         print("Changes pushed to main.")
     else:
