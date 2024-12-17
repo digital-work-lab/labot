@@ -41,13 +41,42 @@ def get_repo_topics(owner, repo_name):
     topics = response.json().get('names', [])
     return topics
 
+def _update_labot_file(repo_path):
+    # Define the file paths
+    labot_repo_file = os.path.join(repo_path, "labot.yml")
+    labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
+    
+    # Check if the files are different
+    if not filecmp.cmp(labot_local_file, labot_repo_file, shallow=False):
+        print("Files differ. Replacing and committing changes.")
+        
+        # Replace the labot.yml in the repo with the one from the local directory
+        os.replace(labot_local_file, labot_repo_file)
+
+        # Initialize the repository using gitpython
+        repo = Repo(os.getcwd())
+
+        # Check for untracked files or changes
+        repo.git.add(labot_repo_file)  # Stage the file for commit
+
+        # Commit the change
+        repo.index.commit("Update labot.yml file")
+
+        # Push the changes to the main branch
+        origin = repo.remotes.origin
+        origin.push("main")
+
+        print("Changes pushed to main.")
+    else:
+        print("Files are identical. No action taken.")
+
 def _colrev_sync_references():
 
     # Authenticate using a GitHub token
     g = Github(GITHUB_TOKEN)
 
     # Get the repository
-    repo = g.get_repo(f"{REPO_OWNER}/{REPO_NAME}")
+    repo = Repo(os.getcwd())
 
     BRANCH_NAME = "colrev_update"
     # Create a new branch (if needed)
@@ -142,6 +171,7 @@ def main():
     if "teaching-material" in topics:
         run_teaching_repo_checks()
 
+    _update_labot_file()
 
     if VALID:
         sys.exit(0)
