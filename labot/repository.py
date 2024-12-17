@@ -111,10 +111,10 @@ def _colrev_sync_references():
         print("Output:\n", e.stdout)
         print("Error:\n", e.stderr)
 
+    repo = Repo(os.getcwd())
     # Check if there are any changes before creating the PR
     if repo.is_dirty(untracked_files=True):
         # Get the repository
-        repo = Repo(os.getcwd())
 
         # should be colrev-update-2024-12-17-12-00-00
         new_branch = f"colrev-update-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
