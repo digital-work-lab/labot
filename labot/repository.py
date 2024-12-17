@@ -7,8 +7,9 @@ import subprocess
 from github import Github
 from git import Repo
 from datetime import datetime
-import filecmp
-import pkg_resources
+import pkgutil
+import hashlib
+from pathlib import Path
 
 # Set up GitHub API URL and token
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")  # GitHub token should be set in the environment variable
@@ -47,11 +48,22 @@ def get_repo_topics(owner, repo_name):
 
 def _update_labot_file():
     # Define the file paths
-    labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
-    labot_package_file = pkg_resources.resource_filename('labot', 'labot/labot.yml')
+    # labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
+    # labot_package_file = pkg_resources.resource_filename('labot', 'labot/labot.yml')
 
-    # Check if the files are different
-    if not filecmp.cmp(labot_local_file, labot_package_file, shallow=False):
+    labot_local_file = Path(__file__).parent / "labot.yml"
+    labot_package_data = pkgutil.get_data("labot", "labot/labot.yml")
+
+    # Function to compute file hash
+    def compute_file_hash(file_path):
+        with open(file_path, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()
+
+    # Compare the local file content with package data
+    labot_package_hash = hashlib.sha256(labot_package_data).hexdigest()
+    labot_local_hash = compute_file_hash(labot_local_file)
+
+    if labot_local_hash != labot_package_hash:
         print("Files differ. Replacing and committing changes.")
         
         # Replace the labot.yml in the repo with the one from the local directory
