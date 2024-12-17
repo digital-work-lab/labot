@@ -8,13 +8,14 @@ readme = "README.md"
 packages = [{include = "labot"}]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.10, <3.13"
 gitpython = "^3.1.43"
 click = "^8.1.7"
 click-completion = "^0.5.2"
-pre-commit = "^4.0.1"
+pre-commit = "^2.20.0"
+colrev = "0.13.1"
+colrev-sync = "0.1.0"
 docx-mailmerge = "^0.5.0"
-requests = "^2.32.3"
 pygithub = "^2.5.0"
 python-docx = "^1.1.2"
 
