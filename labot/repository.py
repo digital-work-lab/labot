@@ -59,6 +59,8 @@ def _update_labot_file():
         with open(file_path, "rb") as f:
             return hashlib.sha256(f.read()).hexdigest()
 
+    # TODO : do not create branch if there are no changes?!
+
     # Compare the local file content with package data
     labot_package_hash = hashlib.sha256(labot_package_data).hexdigest()
     labot_local_hash = compute_file_hash(labot_local_file)
@@ -70,32 +72,82 @@ def _update_labot_file():
         with open(labot_local_file, "wb") as f:
             f.write(labot_package_data)
 
-        # Initialize the repository using gitpython
+
         repo = Repo(os.getcwd())
-        repo.heads.main.checkout()
+        # Check if there are any changes before creating the PR
+        if repo.is_dirty(untracked_files=True):
+            # Get the repository
 
-        # Check for untracked files or changes
-        repo.git.add(labot_local_file)  # Stage the file for commit
+            # should be colrev-update-2024-12-17-12-00-00
+            new_branch = f"labot-workflow-update-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
 
-        # print current branch and git status
-        print(f"Current branch: {repo.active_branch}")
-        print(repo.git.status())
+            if new_branch not in repo.heads:
+                new_branch_ref = repo.create_head(new_branch, repo.head.commit)  # Create the new branch from the current commit
+                new_branch_ref.checkout()  # Checkout the new branch
+                print(f"New branch '{new_branch}' created and checked out.")
+            else:
+                new_branch_ref = repo.heads[new_branch]
+                new_branch_ref.checkout()
+                print(f"Branch '{new_branch}' already exists. Checked out.")
 
-        # Commit the change
-        repo.index.commit("Update labot.yml file")
-        print(repo.git.status())
+            # Push the new branch to GitHub
+            origin = repo.remotes.origin
+            origin.push(new_branch)
+            print(f"Branch '{new_branch}' pushed to GitHub.")
+            # add all changes
+            repo.git.add("--all")
 
-        # Push the changes to the main branch
-        origin = repo.remotes.origin
-        push_result = origin.push(refspec="HEAD:main")
+            # Create a commit for the changes
+            repo.index.commit("Sync changes using colrev-sync")
 
-        for result in push_result:
-            print(f"Push status: {result.summary}")
-            if result.flags & result.ERROR:
-                print("Push error:", result.error)
+            # Push the changes to the new branch again
+            origin.push(new_branch)
+            print(f"Changes pushed to {new_branch}.")
+            # Authenticate using a GitHub token
+            g = Github(GITHUB_TOKEN)
+            repo_name = f"{REPO_OWNER}/{REPO_NAME}"
+            repo_github = g.get_repo(repo_name)
+
+            # Create a pull request
+            pr = repo_github.create_pull(
+                title="Labot update",
+                body="This PR was created to update the labot workflow.",
+                head=new_branch,
+                base="main"
+            )
+            print(f"Pull Request created: {pr.html_url}")
+
+            # switch to main
+            repo.heads.main.checkout()
 
 
-        print("Changes pushed to main.")
+        # # Initialize the repository using gitpython
+        # repo = Repo(os.getcwd())
+        # repo.heads.main.checkout()
+
+        # # Check for untracked files or changes
+        # repo.git.add(labot_local_file)  # Stage the file for commit
+
+        # # print current branch and git status
+        # print(f"Current branch: {repo.active_branch}")
+        # print(repo.git.status())
+
+        # # Commit the change
+        # repo.index.commit("Update labot.yml file")
+        # print(repo.git.status())
+
+        # # Push the changes to the main branch
+        # origin = repo.remotes.origin
+        # push_result = origin.push(refspec="HEAD:main")
+
+        # for result in push_result:
+        #     print(f"Push status: {result.summary}")
+        #     if result.flags & result.ERROR:
+        #         print("Push error:", result.error)
+
+        # # TODO : Push status: [remote rejected] (refusing to allow a GitHub App to create or update workflow `.github/workflows/labot.yml` without `workflows` permission)
+
+        # print("Changes pushed to main.")
     else:
         print("Files are identical. No action taken.")
 
