@@ -18,6 +18,7 @@ docx-mailmerge = "^0.5.0"
 pygithub = "^2.5.0"
 python-docx = "^1.1.2"
 frontmatter = "^3.0.8"
+inquirer = "^3.4.0"
 
 [tool.poetry.scripts]
 labot = "labot.cli:main"
