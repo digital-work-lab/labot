@@ -47,78 +47,108 @@ def get_repo_topics(owner, repo_name):
     return topics
 
 def _update_labot_file():
+
+    issue_title = "Suggestion: Update the YAML file"
+    issue_body = """
+    It seems that the YAML file in the repository needs to be updated. 
+    Please consider reviewing and applying the latest changes.
+    """
+
+    # Initialize the GitHub API client
+    g = Github(GITHUB_TOKEN)
+
+    try:
+        # Get the repository
+        repo = g.get_repo(repo_name)
+
+        # Check if an issue with the same title already exists
+        issues = repo.get_issues(state="open")
+        for issue in issues:
+            if issue.title == issue_title:
+                print(f"Issue already exists: {issue.html_url}")
+                return issue
+
+        # Create a new issue if it does not exist
+        new_issue = repo.create_issue(title=issue_title, body=issue_body)
+        print(f"New issue created: {new_issue.html_url}")
+        return new_issue
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
     # Define the file paths
     # labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
     # labot_package_file = pkg_resources.resource_filename('labot', 'labot/labot.yml')
 
-    labot_local_file = Path(".github/workflows/labot.yml")
-    labot_package_data = pkgutil.get_data("labot", "data/labot.yml")
+    # labot_local_file = Path(".github/workflows/labot.yml")
+    # labot_package_data = pkgutil.get_data("labot", "data/labot.yml")
 
-    # Function to compute file hash
-    def compute_file_hash(file_path):
-        with open(file_path, "rb") as f:
-            return hashlib.sha256(f.read()).hexdigest()
+    # # Function to compute file hash
+    # def compute_file_hash(file_path):
+    #     with open(file_path, "rb") as f:
+    #         return hashlib.sha256(f.read()).hexdigest()
 
-    # TODO : do not create branch if there are no changes?!
+    # # TODO : do not create branch if there are no changes?!
 
-    # Compare the local file content with package data
-    labot_package_hash = hashlib.sha256(labot_package_data).hexdigest()
-    labot_local_hash = compute_file_hash(labot_local_file)
+    # # Compare the local file content with package data
+    # labot_package_hash = hashlib.sha256(labot_package_data).hexdigest()
+    # labot_local_hash = compute_file_hash(labot_local_file)
 
-    if labot_local_hash != labot_package_hash:
-        print("Files differ. Replacing and committing changes.")
+    # if labot_local_hash != labot_package_hash:
+    #     print("Files differ. Replacing and committing changes.")
         
-        # write labot_package_data to labot_local_file
-        with open(labot_local_file, "wb") as f:
-            f.write(labot_package_data)
+    #     # write labot_package_data to labot_local_file
+    #     with open(labot_local_file, "wb") as f:
+    #         f.write(labot_package_data)
 
 
-        repo = Repo(os.getcwd())
-        # Check if there are any changes before creating the PR
-        if repo.is_dirty(untracked_files=True):
-            # Get the repository
+    #     repo = Repo(os.getcwd())
+    #     # Check if there are any changes before creating the PR
+    #     if repo.is_dirty(untracked_files=True):
+    #         # Get the repository
 
-            # should be colrev-update-2024-12-17-12-00-00
-            new_branch = f"labot-workflow-update-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+    #         # should be colrev-update-2024-12-17-12-00-00
+    #         new_branch = f"labot-workflow-update-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
 
-            if new_branch not in repo.heads:
-                new_branch_ref = repo.create_head(new_branch, repo.head.commit)  # Create the new branch from the current commit
-                new_branch_ref.checkout()  # Checkout the new branch
-                print(f"New branch '{new_branch}' created and checked out.")
-            else:
-                new_branch_ref = repo.heads[new_branch]
-                new_branch_ref.checkout()
-                print(f"Branch '{new_branch}' already exists. Checked out.")
+    #         if new_branch not in repo.heads:
+    #             new_branch_ref = repo.create_head(new_branch, repo.head.commit)  # Create the new branch from the current commit
+    #             new_branch_ref.checkout()  # Checkout the new branch
+    #             print(f"New branch '{new_branch}' created and checked out.")
+    #         else:
+    #             new_branch_ref = repo.heads[new_branch]
+    #             new_branch_ref.checkout()
+    #             print(f"Branch '{new_branch}' already exists. Checked out.")
 
-            # Push the new branch to GitHub
-            origin = repo.remotes.origin
-            origin.push(new_branch)
-            print(f"Branch '{new_branch}' pushed to GitHub.")
-            # add all changes
-            repo.git.add("--all")
+    #         # Push the new branch to GitHub
+    #         origin = repo.remotes.origin
+    #         origin.push(new_branch)
+    #         print(f"Branch '{new_branch}' pushed to GitHub.")
+    #         # add all changes
+    #         repo.git.add("--all")
 
-            # Create a commit for the changes
-            repo.index.commit("Sync changes using colrev-sync")
+    #         # Create a commit for the changes
+    #         repo.index.commit("Sync changes using colrev-sync")
 
-            # Push the changes to the new branch again
-            origin.push(new_branch)
-            print(f"Changes pushed to {new_branch}.")
-            # Authenticate using a GitHub token
-            g = Github(GITHUB_TOKEN)
-            repo_name = f"{REPO_OWNER}/{REPO_NAME}"
-            repo_github = g.get_repo(repo_name)
+    #         # Push the changes to the new branch again
+    #         origin.push(new_branch)
+    #         print(f"Changes pushed to {new_branch}.")
+    #         # Authenticate using a GitHub token
+    #         g = Github(GITHUB_TOKEN)
+    #         repo_name = f"{REPO_OWNER}/{REPO_NAME}"
+    #         repo_github = g.get_repo(repo_name)
 
-            # Create a pull request
-            pr = repo_github.create_pull(
-                title="Labot update",
-                body="This PR was created to update the labot workflow.",
-                head=new_branch,
-                base="main"
-            )
-            print(f"Pull Request created: {pr.html_url}")
+    #         # Create a pull request
+    #         pr = repo_github.create_pull(
+    #             title="Labot update",
+    #             body="This PR was created to update the labot workflow.",
+    #             head=new_branch,
+    #             base="main"
+    #         )
+    #         print(f"Pull Request created: {pr.html_url}")
 
-            # switch to main
-            repo.heads.main.checkout()
+    #         # switch to main
+    #         repo.heads.main.checkout()
 
 
         # # Initialize the repository using gitpython
