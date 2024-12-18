@@ -59,6 +59,7 @@ def _update_labot_file():
 
     try:
         # Get the repository
+        repo_name = f"{REPO_OWNER}/{REPO_NAME}"
         repo = g.get_repo(repo_name)
 
         # Check if an issue with the same title already exists
