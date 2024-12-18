@@ -47,58 +47,55 @@ def get_repo_topics(owner, repo_name):
     return topics
 
 def _update_labot_file():
-
-    issue_title = "Suggestion: Update the YAML file"
-    issue_body = """
-    It seems that the YAML file in the repository needs to be updated. 
-    Please consider reviewing and applying the latest changes.
-    """
-
-    # Initialize the GitHub API client
-    g = Github(GITHUB_TOKEN)
-
-    try:
-        # Get the repository
-        repo_name = f"{REPO_OWNER}/{REPO_NAME}"
-        repo = g.get_repo(repo_name)
-
-        # Check if an issue with the same title already exists
-        issues = repo.get_issues(state="open")
-        for issue in issues:
-            if issue.title == issue_title:
-                print(f"Issue already exists: {issue.html_url}")
-                return issue
-
-        # Create a new issue if it does not exist
-        new_issue = repo.create_issue(title=issue_title, body=issue_body)
-        print(f"New issue created: {new_issue.html_url}")
-        return new_issue
-
-    except Exception as e:
-        print(f"Error: {e}")
-        return None
-
     # Define the file paths
-    # labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
-    # labot_package_file = pkg_resources.resource_filename('labot', 'labot/labot.yml')
+    labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
+    labot_package_file = pkg_resources.resource_filename('labot', 'labot/labot.yml')
 
-    # labot_local_file = Path(".github/workflows/labot.yml")
-    # labot_package_data = pkgutil.get_data("labot", "data/labot.yml")
+    labot_local_file = Path(".github/workflows/labot.yml")
+    labot_package_data = pkgutil.get_data("labot", "data/labot.yml")
 
-    # # Function to compute file hash
-    # def compute_file_hash(file_path):
-    #     with open(file_path, "rb") as f:
-    #         return hashlib.sha256(f.read()).hexdigest()
+    # Function to compute file hash
+    def compute_file_hash(file_path):
+        with open(file_path, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()
 
-    # # TODO : do not create branch if there are no changes?!
+    # Compare the local file content with package data
+    labot_package_hash = hashlib.sha256(labot_package_data).hexdigest()
+    labot_local_hash = compute_file_hash(labot_local_file)
 
-    # # Compare the local file content with package data
-    # labot_package_hash = hashlib.sha256(labot_package_data).hexdigest()
-    # labot_local_hash = compute_file_hash(labot_local_file)
+    if labot_local_hash != labot_package_hash:
+        print("Files differ. Replacing and committing changes.")
 
-    # if labot_local_hash != labot_package_hash:
-    #     print("Files differ. Replacing and committing changes.")
-        
+        issue_title = "Suggestion: Update the YAML file"
+        issue_body = """
+        It seems that the YAML file in the repository needs to be updated. 
+        Please consider reviewing and applying the latest changes.
+        """
+
+        # Initialize the GitHub API client
+        g = Github(GITHUB_TOKEN)
+
+        try:
+            # Get the repository
+            repo_name = f"{REPO_OWNER}/{REPO_NAME}"
+            repo = g.get_repo(repo_name)
+
+            # Check if an issue with the same title already exists
+            issues = repo.get_issues(state="open")
+            for issue in issues:
+                if issue.title == issue_title:
+                    print(f"Issue already exists: {issue.html_url}")
+                    return issue
+
+            # Create a new issue if it does not exist
+            new_issue = repo.create_issue(title=issue_title, body=issue_body)
+            print(f"New issue created: {new_issue.html_url}")
+            return new_issue
+
+        except Exception as e:
+            print(f"Error: {e}")
+            return None
+
     #     # write labot_package_data to labot_local_file
     #     with open(labot_local_file, "wb") as f:
     #         f.write(labot_package_data)

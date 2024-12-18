@@ -1,4 +1,4 @@
-name: Labot
+name: Labot checks
 
 on:
   workflow_dispatch:
@@ -11,8 +11,10 @@ on:
 
 jobs:
   install-and-run:
-    runs-on: ubuntu-latest
-    
+    runs-on: ubuntu-latest  # Use the latest Ubuntu environment
+    permissions:
+      contents: write
+      issues: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
