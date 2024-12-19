@@ -285,13 +285,13 @@ files = [
 
 [[package]]
 name = "colrev-sync"
-version = "0.1.0"
+version = "0.2.0"
 description = "CoLRev package for sync"
 optional = false
 python-versions = "<4,>=3.8"
 files = [
-    {file = "colrev_sync-0.1.0-py3-none-any.whl", hash = "sha256:3cfb81593466ac21aab731ed158343be344c9294d7fd46913c830abd9c06f7a0"},
-    {file = "colrev_sync-0.1.0.tar.gz", hash = "sha256:02ff88b369f6411337aa501884d3eac241c665e6eda8d118571f8bd47d16cde0"},
+    {file = "colrev_sync-0.2.0-py3-none-any.whl", hash = "sha256:8edb6624702005982a370acbde6eae3913fefb330bda0fa8283869d3be18d95a"},
+    {file = "colrev_sync-0.2.0.tar.gz", hash = "sha256:c8b310ed2a8bd397de8be46cdb76954519c60bc5a4c84f44b6ed07579b083b4e"},
 ]
 
 [[package]]
@@ -1342,4 +1342,4 @@ pyyaml = "*"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.13"
-content-hash = "290f11569a708765293a9a80565a669cab4f597ac243854f31a23563aafbc781"
+content-hash = "6566af4c61c3766a8dfa6a20b1cfe47bba621aced804ed557d664157894e1ef8"
