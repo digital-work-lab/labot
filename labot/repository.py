@@ -8,6 +8,7 @@ from github import Github
 from git import Repo
 from datetime import datetime
 import pkgutil
+import pkg_resources
 import hashlib
 from pathlib import Path
 
