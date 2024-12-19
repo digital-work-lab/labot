@@ -74,10 +74,8 @@ def _update_labot_file():
         print("Files differ. Replacing and committing changes.")
 
         issue_title = "Suggestion: Update the YAML file"
-        issue_body = """
-        It seems that the YAML file in the repository needs to be updated.
-        Please consider reviewing and applying the latest changes.
-        """
+        issue_body = f"""It seems that the YAML file in the repository needs to be updated.
+Please consider using the [latest version](https://github.com/digital-work-lab/labot/blob/main/labot/data/labot.yml) [here]({{REPO_OWNER}/{REPO_NAME}}/edit/main/.github/workflows/labot.yml)."""
 
         # Initialize the GitHub API client
         g = Github(GITHUB_TOKEN)

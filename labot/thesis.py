@@ -192,7 +192,7 @@ def generate_review():
     data["body"] = "\n".join(lines_wo_comments)
 
     data["review"] = data["body"]
-    data["Date"] = today = str(date.today())
+    data["Date"] = str(date.today())
 
     template_1 = "/home/gerit/ownCloud/data/labot/labot/review_template.docx"
 

@@ -195,8 +195,6 @@ if __name__ == "__main__":
 
     GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
     if not GITHUB_TOKEN:
-        raise OSError(
-            "The GITHUB_TOKEN environment variable is not set or empty."
-        )
+        raise OSError("The GITHUB_TOKEN environment variable is not set or empty.")
 
     list_registration_issues(GITHUB_TOKEN)
