@@ -73,6 +73,7 @@ def paper(
     if init:
         labot.paper.init()
 
+
 @main.command  # (help_priority=1)
 @click.option(
     "--links",
@@ -89,6 +90,7 @@ def handbook(
     if links:
         labot.handbook.link_check()
 
+
 @main.command()
 @click.pass_context
 def check(
@@ -98,6 +100,7 @@ def check(
     import labot.check
 
     labot.check.main()
+
 
 # @main.command(help_priority=1)
 # @click.option(

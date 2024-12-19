@@ -1,20 +1,22 @@
-
 import os
-import git
 import subprocess
+
+import git
+
 
 def clone_repository() -> None:
     repo_url = "https://github.com/digital-work-lab/paper-template"
 
-    if os.listdir('.'):
-        print('Current directory is not empty')
+    if os.listdir("."):
+        print("Current directory is not empty")
         return
 
     try:
-        git.Repo.clone_from(repo_url, '.')
+        git.Repo.clone_from(repo_url, ".")
         print("Repository cloned successfully")
     except git.GitCommandError as e:
         print(f"Error cloning repository: {e}")
+
 
 def configure() -> str:
     title = input("Enter the title: ")
@@ -27,9 +29,9 @@ def configure() -> str:
         file.seek(0)  # Move the file pointer to the beginning
         for line in lines:  # Iterate over the lines from the read mode
             if line.startswith("title:"):
-                line = f"title: \"{title}\"\n"
+                line = f'title: "{title}"\n'
             elif line.startswith("author:"):
-                line = f"author: \"{authors}\"\n"
+                line = f'author: "{authors}"\n'
             elif line.startswith("project:"):
                 line = "project:\n"
             elif line.startswith("  abbreviation:"):
@@ -40,6 +42,7 @@ def configure() -> str:
 
     print("Configuration completed successfully")
     return manuscript_repository
+
 
 def setup() -> None:
     # Remove existing .git directory
@@ -74,6 +77,7 @@ def setup() -> None:
     # Run make pdf command
     subprocess.run(["make", "pdf"])
 
+
 def push_repository(repository: str) -> None:
 
     repository = repository.replace("https://github.com/", "git@github.com:")
@@ -81,17 +85,18 @@ def push_repository(repository: str) -> None:
         repository += ".git"
 
     subprocess.run(["git", "remote", "add", "origin", repository])
-    subprocess.run( ["git", "branch", "-M", "main"])
+    subprocess.run(["git", "branch", "-M", "main"])
     subprocess.run(["git", "push", "-u", "origin", "main"])
+
 
 def init() -> None:
 
     # return if current dir not empty
-    if os.listdir('.'):
-        print('Current directory is not empty')
+    if os.listdir("."):
+        print("Current directory is not empty")
         return
 
-    print('called')
+    print("called")
     clone_repository()
     repository = configure()
     setup()

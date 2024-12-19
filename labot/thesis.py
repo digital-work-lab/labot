@@ -2,23 +2,24 @@
 """Command-line interface for CoLRev."""
 from __future__ import annotations
 
-from pathlib import Path
-import inquirer
-import pandas as pd
+import webbrowser
 from datetime import date
+from pathlib import Path
+
+import inquirer
+import yamale
 import yaml
 from frontmatter import Frontmatter
 from mailmerge import MailMerge
-from datetime import datetime, timedelta
-import webbrowser
-import yamale
 
 HANDBOOK_PATH = Path("/home/gerit/ownCloud/data/handbook")
 # TODO : similarly: should know about nextcloud paths
 
 PRIVATE_DATA = Path("/home/gerit/ownCloud/digital-work-lab/")
 
-THESES_YAML_PATH = Path("/home/gerit/ownCloud/data/teaching/theses-confidential/theses.yaml")
+THESES_YAML_PATH = Path(
+    "/home/gerit/ownCloud/data/teaching/theses-confidential/theses.yaml"
+)
 
 
 class Thesis:
@@ -41,7 +42,7 @@ class Thesis:
         supervisor: str,
         title: str,
     ):
-        self.student = student       
+        self.student = student
         self.filename = filename
         self.student_id = student_id
         self.level = level
@@ -88,11 +89,16 @@ class Thesis:
 
 def get_thesis() -> Thesis:
     # Load theses from YAML file
-    with open(THESES_YAML_PATH, "r") as yaml_file:
+    with open(THESES_YAML_PATH) as yaml_file:
         theses_data = yaml.safe_load(yaml_file)
 
     # Create a mapping of student names to their corresponding IDs
-    student_choices = {f"{data['student']} ({student_id})": student_id for student_id, data in theses_data.items() if data.get("date_of_actual_submission", "") != "" and data["status"] != "graded"}
+    student_choices = {
+        f"{data['student']} ({student_id})": student_id
+        for student_id, data in theses_data.items()
+        if data.get("date_of_actual_submission", "") != ""
+        and data["status"] != "graded"
+    }
 
     # Create a list of student names with IDs for the selection menu
     questions = [
@@ -139,7 +145,7 @@ thesis_id: 35.XXXXXXXX
 title: "{thesis.title}"
 ---
 
-<!-- 
+<!--
 https://digital-work-lab.github.io/handbook/docs/30-teaching/30_processes/30.40.theses.html#grading
 -->
 
@@ -163,7 +169,7 @@ Overall, I therefore recommend a grade of XXXXX for {thesis.student}'s {thesis.p
         review_file.write(review_content)
 
     url = "https://digital-work-lab.github.io/handbook/docs/30-teaching/30_processes/30.40.theses.html#grading"
-    webbrowser.open_new_tab(url)    
+    webbrowser.open_new_tab(url)
 
 
 def generate_review():
@@ -216,12 +222,13 @@ def grade() -> None:
     print(f"Selected review file: {review_file}")
     generate_review()
 
+
 def load_theses():
     # iterate over all md files in the theses directory
     theses = []
-    for thesis_file in Path("theses").rglob('*.md'):
+    for thesis_file in Path("theses").rglob("*.md"):
         # Extract YAML header and validate
-        yaml_header = thesis_file.read_text().split('---')[1]
+        yaml_header = thesis_file.read_text().split("---")[1]
         data = yamale.make_data(content=yaml_header)
         data[0][0]["filename"] = thesis_file.name
         # theses.append(data[0][0])
