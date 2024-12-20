@@ -27,6 +27,26 @@ HEADERS = {
     "Accept": "application/vnd.github.v3+json",
 }
 
+def check_github_token_permissions():
+    """Check if the GITHUB_TOKEN has permissions to create pull requests and issues."""
+    url = f"{BASE_URL}/repos/{REPO_OWNER}/{REPO_NAME}"
+    response = requests.get(url, headers=HEADERS)
+
+    if response.status_code != 200:
+        print(f"Error checking repository access: {response.json()}")
+        sys.exit(1)
+
+    repo_data = response.json()
+
+    if not repo_data.get("permissions", {}).get("pull"):
+        print("GITHUB_TOKEN does not have permission to create pull requests.")
+        sys.exit(1)
+
+    if not repo_data.get("permissions", {}).get("issues"):
+        print("GITHUB_TOKEN does not have permission to create issues.")
+        sys.exit(1)
+
+    print("GITHUB_TOKEN has the required permissions.")
 
 def get_repo_tags(owner, repo_name):
     """Fetch the tags of the repository."""
@@ -230,6 +250,8 @@ def run_teaching_repo_checks():
 
 def main():
     """Main function."""
+    check_github_token_permissions()
+
     tags = get_repo_tags(REPO_OWNER, REPO_NAME)
     print(f"tags: {tags}")
     topics = get_repo_topics(REPO_OWNER, REPO_NAME)
