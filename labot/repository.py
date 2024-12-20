@@ -37,13 +37,14 @@ def check_github_token_permissions():
         sys.exit(1)
 
     repo_data = response.json()
+    print(repo_data.get("permissions", {}))
 
     if not repo_data.get("permissions", {}).get("pull"):
-        print("GITHUB_TOKEN does not have permission to create pull requests.")
+        print("GITHUB_TOKEN does not have permission to create pull requests. Add key from labot-repository-workflows.md as MY_PAT_TOKEN repository secret.")
         sys.exit(1)
 
     if not repo_data.get("permissions", {}).get("issues"):
-        print("GITHUB_TOKEN does not have permission to create issues.")
+        print("GITHUB_TOKEN does not have permission to create issues. Add key from labot-repository-workflows.md as MY_PAT_TOKEN repository secret.")
         sys.exit(1)
 
     print("GITHUB_TOKEN has the required permissions.")
