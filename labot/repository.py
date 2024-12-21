@@ -288,8 +288,8 @@ def run_knowledge_repo_checks():
     # check whether all papers are in the references.bib
     with open("references.bib") as f:
         references = f.read()
-        for paper.replace('.md', '') in paper_files:
-            if paper not in references:
+        for paper in paper_files:
+            if paper.replace('.md', '') not in references:
                 print(f"Paper '{paper}' is not listed in 'references.bib'.")
                 VALID = False
 
