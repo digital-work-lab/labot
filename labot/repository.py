@@ -256,6 +256,53 @@ def run_teaching_repo_checks():
         VALID = False
 
 
+def check_paper_files(paper_files, references):
+    """Check the paper files."""
+    global VALID
+
+    def validate_structure(content, paper_id, expected_title):
+        """Validate the structure of a single paper file."""
+        # Define the expected structure template with placeholders
+        structure_template = (
+            f"# {paper_id}\n"
+            "\n"
+            "## <Full title of the paper>\n"
+            f"{expected_title}\n"
+            "\n"
+            "## Abstract\n"
+            "<Summary of the research>\n"
+            "\n"
+            "<Core takeaways from the research>\n"
+            "\n"
+            "## Connections\n"
+            "<Links to overarching concepts from the concepts/ directory>"
+        )
+        return content.strip() == structure_template.strip()
+
+    errors = []
+
+    for paper_file, content in paper_files.items():
+        paper_id = paper_file.replace(".md", "")  # Extract paper ID from the file name
+
+        if paper_id not in references:
+            errors.append(
+                f"Paper ID {paper_id} in {paper_file} is not in the references."
+            )
+            continue
+
+        expected_title = references[paper_id].get("title", "<Full title of the paper>")
+
+        if not validate_structure(content, paper_id, expected_title):
+            errors.append(f"File {paper_file} does not match the expected structure.")
+
+    if errors:
+        for error in errors:
+            print(f"Error: {error}")
+        VALID = False
+    else:
+        print("All paper files are correctly structured.")
+
+
 def run_knowledge_repo_checks():
     """Run checks specific to the knowledge repository."""
     global VALID
@@ -284,6 +331,9 @@ def run_knowledge_repo_checks():
                 f"File '{paper}' in 'papers' directory does not have a '.md' extension."
             )
             VALID = False
+
+    check_paper_files(paper_files, references)
+
     for concept in concept_files:
         if not concept.endswith(".md"):
             print(
