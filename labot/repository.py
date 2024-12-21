@@ -261,7 +261,7 @@ def run_knowledge_repo_checks():
     global VALID
 
     references = colrev.loader.load_utils.load(
-        filename="references.bib",
+        filename=Path("references.bib"),
         unique_id_field="ID",
     )
 
