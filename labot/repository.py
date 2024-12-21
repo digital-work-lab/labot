@@ -289,7 +289,7 @@ def run_knowledge_repo_checks():
     with open("references.bib") as f:
         references = f.read()
         for paper in paper_files:
-            if paper.replace('.md', '') not in references:
+            if paper.replace(".md", "") not in references:
                 print(f"Paper '{paper}' is not listed in 'references.bib'.")
                 VALID = False
 
@@ -301,6 +301,8 @@ def run_knowledge_repo_checks():
                 f"PDF file '{pdf_file}' for paper '{paper}' not found in 'pdfs' directory."
             )
             VALID = False
+
+    _colrev_sync_references()
 
 
 def main():
