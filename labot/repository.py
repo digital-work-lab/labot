@@ -266,18 +266,11 @@ def check_paper_files(paper_files, references):
         structure_template = (
             f"# {paper_id}\n"
             "\n"
-            "## <Full title of the paper>\n"
-            f"{expected_title}\n"
+            f"## {expected_title}\n"
             "\n"
-            "## Abstract\n"
-            "<Summary of the research>\n"
-            "\n"
-            "<Core takeaways from the research>\n"
-            "\n"
-            "## Connections\n"
-            "<Links to overarching concepts from the concepts/ directory>"
+
         )
-        return content.strip() == structure_template.strip()
+        return content.strip().startswith(structure_template.strip())
 
     errors = []
 
