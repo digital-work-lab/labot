@@ -263,29 +263,27 @@ def check_paper_files(paper_files, references):
     def validate_structure(content, paper_id, expected_title):
         """Validate the structure of a single paper file."""
         # Define the expected structure template with placeholders
-        structure_template = (
-            f"# {paper_id}\n"
-            "\n"
-            f"## {expected_title}\n"
-            "\n"
-
-        )
+        structure_template = f"# {paper_id}\n" "\n" f"## {expected_title}\n" "\n"
         return content.strip().startswith(structure_template.strip())
 
     errors = []
 
     for paper_file in paper_files:
         try:
-            with open("papers/" + paper_file, 'r') as file:
+            with open("papers/" + paper_file) as file:
                 content = file.read()
         except FileNotFoundError:
             errors.append(f"File {paper_file} not found.")
             continue
 
-        paper_id = paper_file.replace(".md", "").split('/')[-1]  # Extract paper ID from the file name
+        paper_id = paper_file.replace(".md", "").split("/")[
+            -1
+        ]  # Extract paper ID from the file name
 
         if paper_id not in references:
-            errors.append(f"Paper ID {paper_id} in {paper_file} is not in the references.")
+            errors.append(
+                f"Paper ID {paper_id} in {paper_file} is not in the references."
+            )
             continue
 
         expected_title = references[paper_id].get("title", "<Full title of the paper>")

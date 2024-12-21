@@ -8,7 +8,6 @@ from pathlib import Path
 
 import inquirer
 import yamale
-import yaml
 from frontmatter import Frontmatter
 from mailmerge import MailMerge
 
@@ -88,19 +87,20 @@ class Thesis:
 
 
 def get_thesis() -> Thesis:
-    # Load theses from YAML file
-    with open(THESES_YAML_PATH) as yaml_file:
-        theses_data = yaml.safe_load(yaml_file)
+    # Load theses from YAML files
 
-    # Create a mapping of student names to their corresponding IDs
+    theses_data = load_theses(
+        theses_path=Path(
+            "/home/gerit/ownCloud/data/teaching/theses-confidential/theses"
+        )
+    )
+
     student_choices = {
-        f"{data['student']} ({student_id})": student_id
-        for student_id, data in theses_data.items()
-        if data.get("date_of_actual_submission", "") != ""
-        and data["status"] != "graded"
+        f"{thesis.student} ({thesis.student_id})": thesis.student_id
+        for thesis in theses_data
+        if thesis.date_of_actual_submission != "" and thesis.status != "archived"
     }
 
-    # Create a list of student names with IDs for the selection menu
     questions = [
         inquirer.List(
             "student",
@@ -109,36 +109,17 @@ def get_thesis() -> Thesis:
         )
     ]
     answers = inquirer.prompt(questions)
-
-    # Get the selected student ID
     selected_student_id = student_choices[answers["student"]]
-    selected_student_data = theses_data[selected_student_id]
-    input(selected_student_data)
-    # Create and return a Thesis object
-    return Thesis(
-        student=selected_student_data["student"],
-        student_id=selected_student_data["student_id"],
-        status=selected_student_data["status"],
-        degree_program=selected_student_data["degree_program"],
-        work_time_months=selected_student_data["work_time_months"],
-        industry_partner=selected_student_data["industry_partner"],
-        date_of_registration=selected_student_data["date_of_registration"],
-        date_of_actual_submission=selected_student_data["date_of_actual_submission"],
-        deadline_for_the_review=selected_student_data["deadline_for_the_review"],
-        date_review_created=selected_student_data["date_review_created"],
-        plagiarism_check_result=selected_student_data["plagiarism_check_result"],
-        remarks=selected_student_data["comment"],
-        archived=selected_student_data["archived"],
-        supervisor=selected_student_data["supervisor"],
-        title=selected_student_data["title"],
-    )
-
+    selected_thesis = [
+        thesis for thesis in theses_data if thesis.student_id == selected_student_id
+    ][0]
+    return selected_thesis
 
 def create_review_file(thesis):
     print("Creating review file...")
     # Add logic to create the review file here
     review_content = f"""---
-subject: "Review: {thesis.program}'s Thesis"
+subject: "Review: {thesis.degree_program}'s Thesis"
 candidate: "{thesis.student}"
 student_id: {int(thesis.student_id)}
 thesis_id: 35.XXXXXXXX
@@ -162,7 +143,7 @@ https://digital-work-lab.github.io/handbook/docs/30-teaching/30_processes/30.40.
 The main strengths are ...
 The main shortcomings are ...
 
-Overall, I therefore recommend a grade of XXXXX for {thesis.student}'s {thesis.program}'s thesis.
+Overall, I therefore recommend a grade of XXXXX for {thesis.student}'s {thesis.degree_program}'s thesis.
 """
 
     with open("review.md", "w") as review_file:
@@ -223,10 +204,10 @@ def grade() -> None:
     generate_review()
 
 
-def load_theses():
+def load_theses(theses_path="theses"):
     # iterate over all md files in the theses directory
     theses = []
-    for thesis_file in Path("theses").rglob("*.md"):
+    for thesis_file in Path(theses_path).rglob("*.md"):
         # Extract YAML header and validate
         yaml_header = thesis_file.read_text().split("---")[1]
         data = yamale.make_data(content=yaml_header)
