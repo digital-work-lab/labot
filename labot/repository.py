@@ -27,6 +27,7 @@ HEADERS = {
     "Accept": "application/vnd.github.v3+json",
 }
 
+
 def check_github_token_permissions():
     """Check if the GITHUB_TOKEN has permissions to create pull requests and issues."""
     url = f"{BASE_URL}/repos/{REPO_OWNER}/{REPO_NAME}"
@@ -40,14 +41,19 @@ def check_github_token_permissions():
     print(repo_data.get("permissions", {}))
 
     if not repo_data.get("permissions", {}).get("pull"):
-        print("GITHUB_TOKEN does not have permission to create pull requests. Add key from labot-repository-workflows.md as MY_PAT_TOKEN repository secret.")
+        print(
+            "GITHUB_TOKEN does not have permission to create pull requests. Add key from labot-repository-workflows.md as MY_PAT_TOKEN repository secret."
+        )
         sys.exit(1)
 
     if not repo_data.get("permissions", {}).get("push"):
-        print("GITHUB_TOKEN does not have permission to create issues (push)). Add key from labot-repository-workflows.md as MY_PAT_TOKEN repository secret.")
+        print(
+            "GITHUB_TOKEN does not have permission to create issues (push)). Add key from labot-repository-workflows.md as MY_PAT_TOKEN repository secret."
+        )
         sys.exit(1)
 
     print("GITHUB_TOKEN has the required permissions.")
+
 
 def get_repo_tags(owner, repo_name):
     """Fetch the tags of the repository."""
@@ -249,6 +255,54 @@ def run_teaching_repo_checks():
         VALID = False
 
 
+def run_knowledge_repo_checks():
+    """Run checks specific to the knowledge repository."""
+    global VALID
+
+    # check whether all files in the pdfs dir have *.pdf extension
+    pdfs_dir = "pdfs"
+    pdfs = os.listdir(pdfs_dir)
+    for pdf in pdfs:
+        if not pdf.endswith(".pdf"):
+            print(f"File '{pdf}' in 'pdfs' directory does not have a '.pdf' extension.")
+            VALID = False
+
+    # check if all files in the papers and concepts dirs have n *.md extension
+    papers_dir = "papers"
+    concepts_dir = "concepts"
+    paper_files = os.listdir(papers_dir)
+    concept_files = os.listdir(concepts_dir)
+    for paper in paper_files:
+        if not paper.endswith(".md"):
+            print(
+                f"File '{paper}' in 'papers' directory does not have a '.md' extension."
+            )
+            VALID = False
+    for concept in concept_files:
+        if not concept.endswith(".md"):
+            print(
+                f"File '{concept}' in 'concepts' directory does not have a '.md' extension."
+            )
+            VALID = False
+
+    # check whether all papers are in the references.md
+    with open("references.md") as f:
+        references = f.read()
+        for paper in paper_files:
+            if paper not in references:
+                print(f"Paper '{paper}' is not listed in 'references.md'.")
+                VALID = False
+
+    # check whether all papers have a PDF in the pdfs dir
+    for paper in paper_files:
+        pdf_file = paper.replace(".md", ".pdf")
+        if pdf_file not in pdfs:
+            print(
+                f"PDF file '{pdf_file}' for paper '{paper}' not found in 'pdfs' directory."
+            )
+            VALID = False
+
+
 def main():
     """Main function."""
     check_github_token_permissions()
@@ -259,10 +313,13 @@ def main():
 
     print(f"Repository '{REPO_NAME}' topics: {topics}")
 
-    if "research" in topics:
+    if "research" in topics and REPO_NAME not in ["work_hub"]:
         run_research_repo_checks()
     if "teaching-material" in topics:
         run_teaching_repo_checks()
+
+    if REPO_NAME in ["work_hub"]:
+        run_knowledge_repo_checks()
 
     _update_labot_file()
 
