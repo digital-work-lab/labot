@@ -8,6 +8,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import colrev.loader.load_utils
 import requests
 from git import Repo
 from github import Github
@@ -259,6 +260,11 @@ def run_knowledge_repo_checks():
     """Run checks specific to the knowledge repository."""
     global VALID
 
+    references = colrev.loader.load_utils.load(
+        filename="references.bib",
+        unique_id_field="ID",
+    )
+
     # check whether all files in the pdfs dir have *.pdf extension
     pdfs_dir = "pdfs"
     pdfs = os.listdir(pdfs_dir)
@@ -286,12 +292,10 @@ def run_knowledge_repo_checks():
             VALID = False
 
     # check whether all papers are in the references.bib
-    with open("references.bib") as f:
-        references = f.read()
-        for paper in paper_files:
-            if paper.replace(".md", "") not in references:
-                print(f"Paper '{paper}' is not listed in 'references.bib'.")
-                VALID = False
+    for paper in paper_files:
+        if paper.replace(".md", "") not in references:
+            print(f"Paper '{paper}' is not listed in 'references.bib'.")
+            VALID = False
 
     # check whether all papers have a PDF in the pdfs dir
     for paper in paper_files:
