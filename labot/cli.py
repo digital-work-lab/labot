@@ -102,66 +102,6 @@ def check(
     labot.check.main()
 
 
-# @main.command(help_priority=1)
-# @click.option(
-#     "--type",
-#     type=click.Choice(TYPE_IDENTIFIER_ENDPOINT_DICT[EndpointType.review_type]),
-#     default="colrev.literature_review",
-#     help="Review type for the setup.",
-# )
-# @click.option(
-#     "-f",
-#     "--force",
-#     is_flag=True,
-#     default=False,
-#     help="Force mode",
-# )
-# @click.option(
-#     "--light",
-#     is_flag=True,
-#     default=False,
-#     help="Setup a lightweight repository (without Docker services)",
-# )
-# @click.option(
-#     "--example",
-#     is_flag=True,
-#     default=False,
-#     help="Add search results example",
-# )
-# @click.option(
-#     "-lpdf",
-#     "--local_pdf_collection",
-#     is_flag=True,
-#     default=False,
-#     help="Add a local PDF collection repository",
-# )
-# @click.pass_context
-# @catch_exception(handle=(colrev_exceptions.CoLRevException))
-# def init(
-#     ctx: click.core.Context,
-#     type: str,
-#     example: bool,
-#     force: bool,
-#     light: bool,
-#     local_pdf_collection: bool,
-# ) -> None:
-#     """Initialize (define review objectives and type)
-
-#     Docs: https://colrev.readthedocs.io/en/latest/manual/problem_formulation/init.html
-#     """
-#     import colrev.ops.init
-
-#     colrev.ops.init.Initializer(
-#         review_type=type,
-#         target_path=Path.cwd(),
-#         example=example,
-#         force_mode=force,
-#         light=light,
-#         local_pdf_collection=local_pdf_collection,
-#         exact_call=EXACT_CALL,
-#     )
-
-
 @main.command()
 @click.pass_context
 def version(
