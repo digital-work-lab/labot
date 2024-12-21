@@ -283,7 +283,7 @@ def check_paper_files(paper_files, references):
 
     for paper_file in paper_files:
         try:
-            with open("paper/" + paper_file, 'r') as file:
+            with open("papers/" + paper_file, 'r') as file:
                 content = file.read()
         except FileNotFoundError:
             errors.append(f"File {paper_file} not found.")
