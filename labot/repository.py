@@ -281,13 +281,18 @@ def check_paper_files(paper_files, references):
 
     errors = []
 
-    for paper_file, content in paper_files.items():
-        paper_id = paper_file.replace(".md", "")  # Extract paper ID from the file name
+    for paper_file in paper_files:
+        try:
+            with open(paper_file, 'r') as file:
+                content = file.read()
+        except FileNotFoundError:
+            errors.append(f"File {paper_file} not found.")
+            continue
+
+        paper_id = paper_file.replace(".md", "").split('/')[-1]  # Extract paper ID from the file name
 
         if paper_id not in references:
-            errors.append(
-                f"Paper ID {paper_id} in {paper_file} is not in the references."
-            )
+            errors.append(f"Paper ID {paper_id} in {paper_file} is not in the references.")
             continue
 
         expected_title = references[paper_id].get("title", "<Full title of the paper>")
