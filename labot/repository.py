@@ -313,15 +313,20 @@ def run_knowledge_repo_checks():
     # check whether all files in the pdfs dir have *.pdf extension
     pdfs_dir = "pdfs"
     pdfs = os.listdir(pdfs_dir)
+    papers_dir = "papers"
+    concepts_dir = "concepts"
+    paper_files = os.listdir(papers_dir)
+
     for pdf in pdfs:
         if not pdf.endswith(".pdf"):
             print(f"File '{pdf}' in 'pdfs' directory does not have a '.pdf' extension.")
             VALID = False
+        # all pdfs must have a paper_file
+        if pdf.replace(".pdf", ".md") not in paper_files:
+            print(f"PDF file '{pdf}' does not have a corresponding paper file.")
+            VALID = False
 
     # check if all files in the papers and concepts dirs have n *.md extension
-    papers_dir = "papers"
-    concepts_dir = "concepts"
-    paper_files = os.listdir(papers_dir)
     concept_files = os.listdir(concepts_dir)
     for paper in paper_files:
         if not paper.endswith(".md"):

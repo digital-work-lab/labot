@@ -1,4 +1,4 @@
-# 🤖 Labot: Facilitating work in the Digital-Work-Lab
+# 🪄 Labot: Facilitating work in the Digital-Work-Lab
 
 Run the following command in the handbook directory:
 
