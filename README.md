@@ -4,6 +4,15 @@ Run the following command in the handbook directory:
 
 ```
 labot status
+
 ```
 
-labot.yaml in repos: requires repo and workflow rights
+Run these commands in an empty directory:
+
+```
+labot paper --init
+labot thesis
+```
+
+Labot also runs as a GitHub action in different repositories (in the `labot.yaml`, which requires repo and workflow rights)
+The entrypoint is `labot.repository.main()`.
