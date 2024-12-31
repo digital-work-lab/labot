@@ -159,11 +159,7 @@ def _colrev_sync_references():
 
     repo = Repo(os.getcwd())
 
-    if repo.head.is_detached:
-        print("Repository is in a detached HEAD state.")
-        current_branch = repo.git.rev_parse("--short", "HEAD")  # Use commit hash
-    else:
-        current_branch = repo.active_branch.name
+    current_branch = repo.active_branch.name
 
     # Check if there are any changes before creating the PR
     if repo.is_dirty(untracked_files=True):
@@ -376,11 +372,6 @@ def run_knowledge_repo_checks():
 def main():
     """Main function."""
     check_github_token_permissions()
-
-    repo = Repo(os.getcwd())
-
-    if repo.head.is_detached:
-        print("XY: Repository is in a detached HEAD state.")
 
     tags = get_repo_tags(REPO_OWNER, REPO_NAME)
     print(f"tags: {tags}")
