@@ -1,32 +1,30 @@
-# 🪄 LaBot: Facilitating work in the Digital-Work-Lab
+# 🪄 LaBot: Facilitating work in the Digital-Work Lab
 
 ```mermaid
 graph LR
-    labot[🪄 LaBot] --> cli["<a href='#cli'>CLI</a>"]
-    labot --> ghactions["<a href='#github-actions'>GitHub Actions</a>"]
-    cli --> status[Status]
-    cli --> paper[Paper Management]
-    cli --> thesis[Thesis Support]
-    cli --> other_cli[...]
+    labot[🪄 LaBot] --> ghactions["<a href='#github-actions'>GitHub Actions</a>"]
+    labot --> cli["<a href='#cli'>CLI</a>"]
     ghactions --> repos[Update Repositories]
     ghactions --> thesis_stats[Thesis Stats]
     ghactions --> other_gha[...]
+    cli --> paper[Paper Management]
+    cli --> thesis[Thesis Support]
+    cli --> other_cli[...]
 ```
 
 ## CLI
-
-Run the following command in the handbook directory:
-
-```
-labot status
-
-```
 
 Run these commands in an empty directory:
 
 ```
 labot paper --init
 labot thesis
+```
+
+Work-in-progress:
+
+```
+labot status
 ```
 
 ## GitHub actions
