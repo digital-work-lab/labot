@@ -1,13 +1,14 @@
 #! /usr/bin/env python3
 """Repository checks."""
 import hashlib
+import json
 import os
 import pkgutil
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-
+from openai import OpenAI
 import colrev.loader.load_utils
 import requests
 from git import Repo
@@ -27,6 +28,23 @@ HEADERS = {
     "Authorization": f"Bearer {GITHUB_TOKEN}",
     "Accept": "application/vnd.github.v3+json",
 }
+
+
+def detect_event_type():
+    event_name = os.getenv("GITHUB_EVENT_NAME")
+
+    if event_name == "pull_request":
+        head_ref = os.getenv("GITHUB_HEAD_REF", "unknown")
+        base_ref = os.getenv("GITHUB_BASE_REF", "unknown")
+        print(f"Triggered by a pull request from {head_ref} to {base_ref}.")
+        return "pull_request"
+    elif event_name == "push":
+        branch = os.getenv("GITHUB_REF", "unknown").replace("refs/heads/", "")
+        print(f"Triggered by a push to branch {branch}.")
+        return "push"
+    else:
+        print(f"Triggered by an unrecognized event: {event_name}")
+        return "other"
 
 
 def check_github_token_permissions():
@@ -365,8 +383,190 @@ def run_knowledge_repo_checks():
                 f"PDF file '{pdf_file}' for paper '{paper}' not found in 'pdfs' directory."
             )
             VALID = False
+        # TODO : validate asset locations and links (broken links)
 
     _colrev_sync_references()
+
+
+def get_pull_request_number():
+    """
+    Retrieve the pull request number from the GitHub Actions environment.
+
+    Returns:
+        int: The pull request number, or None if not a pull request event.
+    """
+    # Path to the event payload file
+    event_path = os.getenv("GITHUB_EVENT_PATH")
+
+    if not event_path:
+        raise OSError("GITHUB_EVENT_PATH environment variable is not set.")
+
+    try:
+        # Load the event payload from the JSON file
+        with open(event_path) as event_file:
+            event_data = json.load(event_file)
+
+        # Extract the pull request number if available
+        if "pull_request" in event_data:
+            pr_number = event_data["pull_request"]["number"]
+            return pr_number
+        else:
+            print("This event is not a pull request.")
+            return None
+    except Exception as e:
+        raise RuntimeError(f"Failed to parse the event payload: {e}")
+
+def get_pull_request_changes(pr_number):
+    """
+    Fetch the changes introduced by the commits associated with a pull request.
+
+    Args:
+        pr_number (int): The number of the pull request.
+
+    Returns:
+        dict: A dictionary with filenames as keys and the type of change (added, modified, removed) as values,
+              or an error message if the request fails.
+    """
+    # Retrieve the GitHub token and repository information
+    github_token = os.getenv("GITHUB_TOKEN")
+    github_repo = os.getenv("GITHUB_REPOSITORY")  # e.g., "owner/repo"
+
+    if not github_token or not github_repo:
+        raise EnvironmentError("GITHUB_TOKEN or GITHUB_REPOSITORY environment variable is not set.")
+
+    # Construct the API URL for the pull request files
+    api_url = f"https://api.github.com/repos/{github_repo}/pulls/{pr_number}/files"
+
+    # Set up headers for the API request
+    headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    # Make the API request to fetch the changes
+    response = requests.get(api_url, headers=headers)
+
+    if response.status_code == 200:
+        # Parse the JSON response and extract file patches
+        files = response.json()
+        changes = {
+            file["filename"]: file.get("patch", "No patch available (binary or large file)")
+            for file in files
+        }
+        return changes
+    else:
+        return f"Failed to fetch changes. Status code: {response.status_code}, Response: {response.text}"
+
+def evaluate_changes_with_openai(changes):
+    """
+    Use OpenAI's GPT to evaluate if the changes align with defined values.
+
+    Args:
+        changes (str): A string describing the changes to evaluate.
+
+    Returns:
+        str: The evaluation provided by OpenAI.
+    """
+    # Retrieve the OpenAI API key from the environment
+    api_key = os.getenv("OPENAI_KEY")
+    if not api_key:
+        raise EnvironmentError("OPENAI_KEY environment variable is not set.")
+
+    # Define the values for alignment
+    values = """
+    🚀 Impact in research, teaching, and practice
+    We challenge ourselves every day to make significant contributions to research on digital work, 
+    inspiring students in different teaching formats, and facilitating the application of our work in practice.
+
+    🛠️ Rigor, reliability, and reproducibility
+    We value rigorous methods that are based on evidence and yield reproducible results. 
+    To this end, we select reliable tools and standard operating principles.
+
+    ♻️ Continuous improvement, openness, sustainability
+    We aim to make our work processes, continuous improvement efforts, and outcomes openly accessible. 
+    In particular, we prefer open-source over proprietary technology.
+
+    🙏 Participation, support, and diversity
+    We build a culture of support, encouraging the participation of different stakeholders, 
+    including current and former team members, students, and colleagues. We make diversity our strength.
+
+    🧑‍🎓️ Learning
+    We believe in continuous growth, setting aside time to learn on a regular basis, and curating helpful resources.
+    """
+
+    # Construct the prompt for OpenAI
+    prompt = f"""
+    You are an expert reviewer tasked with evaluating changes against the following values:
+
+    {values}
+
+    Please review the following changes and determine if they align with these values. Provide specific reasoning for your assessment:
+
+    Changes:
+    {changes}
+    """
+
+    # Call the OpenAI API
+    try:
+        client = OpenAI(api_key=api_key)
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "You are an expert reviewer of technical changes."},
+                {"role": "user", "content": prompt}
+            ],
+            model="gpt-4"
+        )
+        return chat_completion.choices[0].message.content.strip()
+    except Exception as e:
+        return f"An error occurred while communicating with OpenAI: {e}"
+
+def add_comment_to_pull_request(pr_number, comment_body):
+    """
+    Add a comment to a pull request on GitHub.
+
+    Args:
+        pr_number (int): The number of the pull request.
+        comment_body (str): The body of the comment to add.
+
+    Returns:
+        str: A message indicating success or failure.
+    """
+    # Retrieve the GitHub token and repository information
+    github_token = os.getenv("GITHUB_TOKEN")
+    github_repo = os.getenv("GITHUB_REPOSITORY")  # e.g., "owner/repo"
+
+    if not github_token or not github_repo:
+        raise EnvironmentError("GITHUB_TOKEN or GITHUB_REPOSITORY environment variable is not set.")
+
+    # Construct the API URL for pull request comments
+    api_url = f"https://api.github.com/repos/{github_repo}/issues/{pr_number}/comments"
+
+    # Set up headers for the API request
+    headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    # Construct the payload for the comment
+    data = {
+        "body": comment_body
+    }
+
+    # Make the API request to post the comment
+    response = requests.post(api_url, headers=headers, json=data)
+
+    if response.status_code == 201:
+        return "Comment successfully added to the pull request."
+    else:
+        return f"Failed to add comment. Status code: {response.status_code}, Response: {response.text}"
+
+
+def run_pull_request_checks():
+    pr_number = get_pull_request_number()
+    changes = get_pull_request_changes(pr_number)
+    print(f"Changes in pull request {pr_number}: {changes}")
+    response = evaluate_changes_with_openai(changes)
+    add_comment_to_pull_request(pr_number, response)
 
 
 def main():
@@ -388,6 +588,9 @@ def main():
         run_knowledge_repo_checks()
 
     _update_labot_file()
+
+    if detect_event_type() == "pull_request":
+        run_pull_request_checks()
 
     if VALID:
         sys.exit(0)
