@@ -36,6 +36,7 @@ def check_github_token_permissions():
 
     if response.status_code != 200:
         print(f"Error checking repository access: {response.json()}")
+        print("Add MY_PAT_TOKEN as repository secret")
         sys.exit(1)
 
     repo_data = response.json()
@@ -157,53 +158,65 @@ def _colrev_sync_references():
         print("Error:\n", e.stderr)
 
     repo = Repo(os.getcwd())
+
+    if repo.head.is_detached:
+        print("Repository is in a detached HEAD state.")
+        current_branch = repo.git.rev_parse("--short", "HEAD")  # Use commit hash
+    else:
+        current_branch = repo.active_branch.name
+
     # Check if there are any changes before creating the PR
     if repo.is_dirty(untracked_files=True):
-        # Get the repository
-
         # should be colrev-update-2024-12-17-12-00-00
         new_branch = f"colrev-update-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+        # Get the current branch
+        if current_branch == "main":
+            if new_branch not in repo.heads:
+                # Create the new branch from the current commit
+                new_branch_ref = repo.create_head(new_branch, repo.head.commit)
+                new_branch_ref.checkout()
+                print(f"New branch '{new_branch}' created and checked out.")
+            else:
+                new_branch_ref = repo.heads[new_branch]
+                new_branch_ref.checkout()
+                print(f"Branch '{new_branch}' already exists. Checked out.")
 
-        if new_branch not in repo.heads:
-            new_branch_ref = repo.create_head(
-                new_branch, repo.head.commit
-            )  # Create the new branch from the current commit
-            new_branch_ref.checkout()  # Checkout the new branch
-            print(f"New branch '{new_branch}' created and checked out.")
-        else:
-            new_branch_ref = repo.heads[new_branch]
-            new_branch_ref.checkout()
-            print(f"Branch '{new_branch}' already exists. Checked out.")
-
-        # Push the new branch to GitHub
-        origin = repo.remotes.origin
-        origin.push(new_branch)
-        print(f"Branch '{new_branch}' pushed to GitHub.")
         # add all changes
         repo.git.add("--all")
 
-        # Create a commit for the changes
-        repo.index.commit("Sync changes using colrev-sync")
+        # Create a commit for the changes and check whether a commit was created
+        if not repo.index.commit("Sync changes using colrev-sync"):
+            print("No changes to commit.")
+            return
 
-        # Push the changes to the new branch again
-        origin.push(new_branch)
-        print(f"Changes pushed to {new_branch}.")
-        # Authenticate using a GitHub token
-        g = Github(GITHUB_TOKEN)
-        repo_name = f"{REPO_OWNER}/{REPO_NAME}"
-        repo_github = g.get_repo(repo_name)
+        origin = repo.remotes.origin
+        if current_branch == "main":
+            # Push the new branch to GitHub
+            origin.push(new_branch)
+            print(f"Branch '{new_branch}' pushed to GitHub.")
 
-        # Create a pull request
-        pr = repo_github.create_pull(
-            title="ColRev Sync",
-            body="This PR was created using the colrev-sync command.",
-            head=new_branch,
-            base="main",
-        )
-        print(f"Pull Request created: {pr.html_url}")
+            # Push the changes to the new branch again
+            origin.push(new_branch)
+            print(f"Changes pushed to {new_branch}.")
+            # Authenticate using a GitHub token
+            g = Github(GITHUB_TOKEN)
+            repo_name = f"{REPO_OWNER}/{REPO_NAME}"
+            repo_github = g.get_repo(repo_name)
 
-        # switch to main
-        repo.heads.main.checkout()
+            # Create a pull request
+            pr = repo_github.create_pull(
+                title="ColRev Sync",
+                body="This PR was created using the colrev-sync command.",
+                head=new_branch,
+                base="main",
+            )
+            print(f"Pull Request created: {pr.html_url}")
+
+            # switch to main
+            repo.heads.main.checkout()
+        else:
+            origin.push(current_branch)
+
     else:
         print("No changes found in the branch. Skipping PR creation.")
         return
@@ -363,6 +376,11 @@ def run_knowledge_repo_checks():
 def main():
     """Main function."""
     check_github_token_permissions()
+
+    repo = Repo(os.getcwd())
+
+    if repo.head.is_detached:
+        print("XY: Repository is in a detached HEAD state.")
 
     tags = get_repo_tags(REPO_OWNER, REPO_NAME)
     print(f"tags: {tags}")

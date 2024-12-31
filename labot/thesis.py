@@ -115,6 +115,7 @@ def get_thesis() -> Thesis:
     ][0]
     return selected_thesis
 
+
 def create_review_file(thesis):
     print("Creating review file...")
     # Add logic to create the review file here
