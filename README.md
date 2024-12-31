@@ -2,8 +2,8 @@
 
 ```mermaid
 graph LR
-    labot[🪄 LaBot] --> ghactions["<a href='?tab=readme-ov-file#github-actions'>GitHub Actions</a>"]
-    labot --> cli["<a href='?tab=readme-ov-file#cli'>CLI</a>"]
+    labot[🪄 LaBot] --> ghactions["<a href='digital-work-lab/labot?tab=readme-ov-file#github-actions'>GitHub Actions</a>"]
+    labot --> cli["<a href='digital-work-lab/labot?tab=readme-ov-file#cli'>CLI</a>"]
     ghactions --> repos[Update Repositories]
     ghactions --> thesis_stats[Thesis Stats]
     ghactions --> other_gha[...]
