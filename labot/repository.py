@@ -7,12 +7,16 @@ import pkgutil
 import subprocess
 import sys
 from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
-from openai import OpenAI
+
 import colrev.loader.load_utils
 import requests
 from git import Repo
 from github import Github
+from openai import OpenAI
+
+import labot.thesis
 
 # Set up GitHub API URL and token
 GITHUB_TOKEN = os.getenv(
@@ -416,6 +420,7 @@ def get_pull_request_number():
     except Exception as e:
         raise RuntimeError(f"Failed to parse the event payload: {e}")
 
+
 def get_pull_request_changes(pr_number):
     """
     Fetch the changes introduced by the commits associated with a pull request.
@@ -432,7 +437,9 @@ def get_pull_request_changes(pr_number):
     github_repo = os.getenv("GITHUB_REPOSITORY")  # e.g., "owner/repo"
 
     if not github_token or not github_repo:
-        raise EnvironmentError("GITHUB_TOKEN or GITHUB_REPOSITORY environment variable is not set.")
+        raise OSError(
+            "GITHUB_TOKEN or GITHUB_REPOSITORY environment variable is not set."
+        )
 
     # Construct the API URL for the pull request files
     api_url = f"https://api.github.com/repos/{github_repo}/pulls/{pr_number}/files"
@@ -440,7 +447,7 @@ def get_pull_request_changes(pr_number):
     # Set up headers for the API request
     headers = {
         "Authorization": f"Bearer {github_token}",
-        "Accept": "application/vnd.github.v3+json"
+        "Accept": "application/vnd.github.v3+json",
     }
 
     # Make the API request to fetch the changes
@@ -450,12 +457,15 @@ def get_pull_request_changes(pr_number):
         # Parse the JSON response and extract file patches
         files = response.json()
         changes = {
-            file["filename"]: file.get("patch", "No patch available (binary or large file)")
+            file["filename"]: file.get(
+                "patch", "No patch available (binary or large file)"
+            )
             for file in files
         }
         return changes
     else:
         return f"Failed to fetch changes. Status code: {response.status_code}, Response: {response.text}"
+
 
 def evaluate_changes_with_openai(changes):
     """
@@ -470,24 +480,24 @@ def evaluate_changes_with_openai(changes):
     # Retrieve the OpenAI API key from the environment
     api_key = os.getenv("OPENAI_KEY")
     if not api_key:
-        raise EnvironmentError("OPENAI_KEY environment variable is not set.")
+        raise OSError("OPENAI_KEY environment variable is not set.")
 
     # Define the values for alignment
     values = """
     🚀 Impact in research, teaching, and practice
-    We challenge ourselves every day to make significant contributions to research on digital work, 
+    We challenge ourselves every day to make significant contributions to research on digital work,
     inspiring students in different teaching formats, and facilitating the application of our work in practice.
 
     🛠️ Rigor, reliability, and reproducibility
-    We value rigorous methods that are based on evidence and yield reproducible results. 
+    We value rigorous methods that are based on evidence and yield reproducible results.
     To this end, we select reliable tools and standard operating principles.
 
     ♻️ Continuous improvement, openness, sustainability
-    We aim to make our work processes, continuous improvement efforts, and outcomes openly accessible. 
+    We aim to make our work processes, continuous improvement efforts, and outcomes openly accessible.
     In particular, we prefer open-source over proprietary technology.
 
     🙏 Participation, support, and diversity
-    We build a culture of support, encouraging the participation of different stakeholders, 
+    We build a culture of support, encouraging the participation of different stakeholders,
     including current and former team members, students, and colleagues. We make diversity our strength.
 
     🧑‍🎓️ Learning
@@ -511,14 +521,18 @@ def evaluate_changes_with_openai(changes):
         client = OpenAI(api_key=api_key)
         chat_completion = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "You are an expert reviewer of technical changes."},
-                {"role": "user", "content": prompt}
+                {
+                    "role": "system",
+                    "content": "You are an expert reviewer of technical changes.",
+                },
+                {"role": "user", "content": prompt},
             ],
-            model="gpt-4"
+            model="gpt-4",
         )
         return chat_completion.choices[0].message.content.strip()
     except Exception as e:
         return f"An error occurred while communicating with OpenAI: {e}"
+
 
 def add_comment_to_pull_request(pr_number, comment_body):
     """
@@ -536,7 +550,9 @@ def add_comment_to_pull_request(pr_number, comment_body):
     github_repo = os.getenv("GITHUB_REPOSITORY")  # e.g., "owner/repo"
 
     if not github_token or not github_repo:
-        raise EnvironmentError("GITHUB_TOKEN or GITHUB_REPOSITORY environment variable is not set.")
+        raise OSError(
+            "GITHUB_TOKEN or GITHUB_REPOSITORY environment variable is not set."
+        )
 
     # Construct the API URL for pull request comments
     api_url = f"https://api.github.com/repos/{github_repo}/issues/{pr_number}/comments"
@@ -544,13 +560,11 @@ def add_comment_to_pull_request(pr_number, comment_body):
     # Set up headers for the API request
     headers = {
         "Authorization": f"Bearer {github_token}",
-        "Accept": "application/vnd.github.v3+json"
+        "Accept": "application/vnd.github.v3+json",
     }
 
     # Construct the payload for the comment
-    data = {
-        "body": comment_body
-    }
+    data = {"body": comment_body}
 
     # Make the API request to post the comment
     response = requests.post(api_url, headers=headers, json=data)
@@ -567,6 +581,75 @@ def run_pull_request_checks():
     print(f"Changes in pull request {pr_number}: {changes}")
     response = evaluate_changes_with_openai(changes)
     add_comment_to_pull_request(pr_number, response)
+
+
+def generate_mermaid_chart(theses):
+
+    # Dynamic date range
+    today = datetime.today()
+    end_date = today.strftime("%Y-%m")
+    start_date = (today - timedelta(days=365)).strftime("%Y-%m")
+
+    current_date = datetime.strptime(start_date, "%Y-%m")
+    end_date = datetime.strptime(end_date, "%Y-%m")
+    thesis_counts = {}
+
+    while current_date <= end_date:
+        month_key = current_date.strftime("%Y-%m")
+        thesis_counts[month_key] = {"current": 0, "capacity": 8}  # Default capacity
+        current_date = datetime(
+            current_date.year + (current_date.month // 12),
+            current_date.month % 12 + 1,
+            1,
+        )
+
+    for thesis in theses:
+        registration_date = datetime.strptime(
+            thesis.date_of_registration, "%Y-%m-%d"
+        )
+        print(registration_date)
+        month_key = registration_date.strftime("%Y-%m")
+        if month_key in thesis_counts:
+            thesis_counts[month_key]["current"] += 1
+
+    print(thesis_counts)
+    x_axis = list(thesis_counts.keys())
+    bar_data = [value["current"] for value in thesis_counts.values()]
+    line_data = [value["capacity"] for value in thesis_counts.values()]
+
+    chart = f"""{'{: .text-center}'}
+```mermaid
+---
+config:
+    xyChart:
+        width: 900
+        height: 300
+---
+xychart-beta
+    x-axis [{', '.join(x_axis)}]
+    y-axis "Theses (current vs capacity)" 0 --> {max(max(bar_data), max(line_data))}
+    bar [{', '.join(map(str, bar_data))}]
+    line [{', '.join(map(str, line_data))}]
+```"""
+    return chart
+
+
+def run_theses_checks():
+
+    current_dir = os.getcwd()
+    os.chdir("..")
+    repo_path = "theses-confidential"
+    if not os.path.exists(repo_path):
+        os.system(
+            f"git clone https://{GITHUB_TOKEN}@github.com/digital-work-lab/theses-confidential.git"
+        )
+    os.chdir(repo_path)
+    theses_path = os.getcwd() + "/theses"
+    theses = labot.thesis.load_theses(theses_path=theses_path)
+
+    mermaid_chart = generate_mermaid_chart(theses)
+    print(mermaid_chart)
+    os.chdir(current_dir)
 
 
 def main():
@@ -586,6 +669,8 @@ def main():
 
     if REPO_NAME in ["work_hub"]:
         run_knowledge_repo_checks()
+    if REPO_NAME == "theses":
+        run_theses_checks()
 
     _update_labot_file()
 
