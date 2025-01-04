@@ -4,10 +4,10 @@ import hashlib
 import json
 import os
 import pkgutil
+import re
 import subprocess
 import sys
 from datetime import datetime
-from datetime import timedelta
 from pathlib import Path
 
 import colrev.loader.load_utils
@@ -583,41 +583,40 @@ def run_pull_request_checks():
     add_comment_to_pull_request(pr_number, response)
 
 
-def generate_mermaid_chart(theses):
+def read_availability_md(file_path):
+    """Reads the Mermaid chart from the markdown file."""
+    with open(file_path) as file:
+        content = file.read()
+    return content
 
-    # Dynamic date range
-    today = datetime.today()
-    end_date = today.strftime("%Y-%m")
-    start_date = (today - timedelta(days=365)).strftime("%Y-%m")
 
-    current_date = datetime.strptime(start_date, "%Y-%m")
-    end_date = datetime.strptime(end_date, "%Y-%m")
-    thesis_counts = {}
+def parse_mermaid_chart(content):
+    """Parses x-axis, bar, and line data from the Mermaid chart."""
+    x_axis = re.search(r"x-axis \[([^\]]+)\]", content).group(1).split(", ")
+    bar_data = list(
+        map(int, re.search(r"bar \[([^\]]+)\]", content).group(1).split(","))
+    )
+    line_data = list(
+        map(int, re.search(r"line \[([^\]]+)\]", content).group(1).split(","))
+    )
+    return x_axis, bar_data, line_data
 
-    while current_date <= end_date:
-        month_key = current_date.strftime("%Y-%m")
-        thesis_counts[month_key] = {"current": 0, "capacity": 8}  # Default capacity
-        current_date = datetime(
-            current_date.year + (current_date.month // 12),
-            current_date.month % 12 + 1,
-            1,
-        )
 
-    for thesis in theses:
-        registration_date = datetime.strptime(
-            thesis.date_of_registration, "%Y-%m-%d"
-        )
-        print(registration_date)
-        month_key = registration_date.strftime("%Y-%m")
-        if month_key in thesis_counts:
-            thesis_counts[month_key]["current"] += 1
+def update_mermaid_chart(x_axis, bar_data, line_data, currently):
+    """Updates the Mermaid chart data."""
+    # Remove the first data point
+    x_axis.pop(0)
+    bar_data.pop(0)
+    line_data.pop(0)
 
-    print(thesis_counts)
-    x_axis = list(thesis_counts.keys())
-    bar_data = [value["current"] for value in thesis_counts.values()]
-    line_data = [value["capacity"] for value in thesis_counts.values()]
+    # Add the current month and data
+    current_month = datetime.now().strftime("%Y-%m")
+    x_axis.append(current_month)
+    bar_data.append(currently)
+    line_data.append(8)  # Fixed capacity
 
-    chart = f"""{'{: .text-center}'}
+    # Regenerate the chart
+    updated_chart = f"""{'{: .text-center}'}
 ```mermaid
 ---
 config:
@@ -631,7 +630,34 @@ xychart-beta
     bar [{', '.join(map(str, bar_data))}]
     line [{', '.join(map(str, line_data))}]
 ```"""
-    return chart
+    return updated_chart
+
+
+def write_availability_md(file_path, content):
+    """Writes the updated Mermaid chart back to the markdown file."""
+    with open(file_path, "w") as file:
+        file.write(content)
+    # create and push a commit using git.Repo()
+    repo = Repo(os.getcwd())
+    repo.git.add(file_path)
+    repo.index.commit("Update availability chart")
+    origin = repo.remotes.origin
+    origin.push("main")
+
+
+def generate_mermaid_chart(theses):
+
+    file_path = "_includes/availability.md"
+    currently = sum(1 for thesis in theses if thesis.status != "archived")
+    content = read_availability_md(file_path)
+    current_month = datetime.now().strftime("%Y-%m")
+    if current_month in content:
+        return
+
+    x_axis, bar_data, line_data = parse_mermaid_chart(content)
+
+    updated_chart = update_mermaid_chart(x_axis, bar_data, line_data, currently)
+    write_availability_md(file_path, updated_chart)
 
 
 def run_theses_checks():
@@ -646,10 +672,8 @@ def run_theses_checks():
     os.chdir(repo_path)
     theses_path = os.getcwd() + "/theses"
     theses = labot.thesis.load_theses(theses_path=theses_path)
-
-    mermaid_chart = generate_mermaid_chart(theses)
-    print(mermaid_chart)
     os.chdir(current_dir)
+    generate_mermaid_chart(theses)
 
 
 def main():
