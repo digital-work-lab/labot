@@ -480,7 +480,8 @@ def evaluate_changes_with_openai(changes):
     # Retrieve the OpenAI API key from the environment
     api_key = os.getenv("OPENAI_KEY")
     if not api_key:
-        raise OSError("OPENAI_KEY environment variable is not set.")
+        print("OPENAI_KEY environment variable is not set.")
+        return ""
 
     # Define the values for alignment
     values = """
@@ -580,7 +581,8 @@ def run_pull_request_checks():
     changes = get_pull_request_changes(pr_number)
     print(f"Changes in pull request {pr_number}: {changes}")
     response = evaluate_changes_with_openai(changes)
-    add_comment_to_pull_request(pr_number, response)
+    if response:
+        add_comment_to_pull_request(pr_number, response)
 
 
 def read_availability_md(file_path):
