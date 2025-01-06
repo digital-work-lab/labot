@@ -156,6 +156,23 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
         print("Labot workflow files are identical. No action taken.")
 
 
+def has_changes_to_commit():
+    """
+    Check if there are any changes in the repository, ignoring newline differences.
+    """
+    try:
+        # Run git diff with --ignore-space-at-eol to ignore newline changes
+        result = subprocess.run(
+            ["git", "diff", "--ignore-space-at-eol", "--exit-code"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        return result.returncode != 0  # Non-zero exit code means changes exist
+    except Exception as e:
+        print(f"Error checking repository changes: {e}")
+        return False
+
 def _colrev_sync_references():
 
     # Run the colrev-sync command
@@ -184,7 +201,7 @@ def _colrev_sync_references():
     current_branch = repo.active_branch.name
 
     # Check if there are any changes before creating the PR
-    if repo.is_dirty(untracked_files=True):
+    if has_changes_to_commit():
         # should be colrev-update-2024-12-17-12-00-00
         new_branch = f"colrev-update-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
         # Get the current branch
