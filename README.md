@@ -36,3 +36,8 @@ Work-in-progress:
 ```
 labot status
 ```
+
+
+For local tests with chatgpt:
+
+export OPENAI_KEY="your_openai_api_key"

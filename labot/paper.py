@@ -1,7 +1,9 @@
 import os
+import re
 import subprocess
 
 import git
+from openai import OpenAI
 
 
 def clone_repository() -> None:
@@ -102,3 +104,125 @@ def init() -> None:
     setup()
     if repository:
         push_repository(repository)
+
+
+def split_into_chunks(text, max_chars=4000):
+    """
+    Split text into chunks that do not exceed max_chars, ensuring chunks are complete sentences.
+
+    Args:
+        text (str): The content to split.
+        max_chars (int): Maximum number of characters per chunk.
+
+    Returns:
+        list: A list of text chunks.
+    """
+    chunks = []
+    current_chunk = []
+
+    for line in text.splitlines(keepends=True):
+        if sum(len(s) for s in current_chunk) + len(line) <= max_chars:
+            current_chunk.append(line)
+        else:
+            chunks.append("".join(current_chunk))
+            current_chunk = [line]
+
+    if current_chunk:
+        chunks.append("".join(current_chunk))
+
+    return chunks
+
+
+def process_chunk(chunk, api_key):
+    """
+    Process a chunk of Markdown to suggest semantic line breaks while ignoring YAML headers and HTML comments.
+
+    Args:
+        chunk (str): The Markdown chunk to process.
+        api_key (str): OpenAI API key.
+
+    Returns:
+        str: Revised chunk with semantic line breaks.
+    """
+    # Detect YAML header and HTML comments
+    yaml_header_pattern = r"^---.*?---\s"  # YAML header is enclosed in "---"
+    html_comment_pattern = r"<!--.*?-->"
+
+    yaml_headers = re.findall(yaml_header_pattern, chunk, re.DOTALL)
+    html_comments = re.findall(html_comment_pattern, chunk, re.DOTALL)
+
+    # Remove YAML headers and HTML comments from the chunk
+    sanitized_chunk = re.sub(yaml_header_pattern, "", chunk, flags=re.DOTALL)
+    sanitized_chunk = re.sub(html_comment_pattern, "", sanitized_chunk, flags=re.DOTALL)
+
+    # Define the prompt
+    prompt = f'''
+You are an expert in Markdown formatting. Revise the following Markdown content by introducing semantic line breaks.
+Do not modify YAML headers, Latex tables, or HTML comments. Only introduce line breaks for lines longer than 160 characters, and ensure that no new line is shorter than 50 characters after the break.
+
+Markdown content:
+"""
+{sanitized_chunk}
+"""
+
+Provide the revised content with semantic line breaks only:
+'''
+
+    client = OpenAI(api_key=api_key)
+
+    try:
+        response = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert in Markdown and semantic formatting.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            model="gpt-4",
+            max_tokens=1500,
+            temperature=0.2,
+        )
+        revised_content = response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"An error occurred: {e}"
+
+    # Reinsert YAML headers and HTML comments
+    for yaml_header in yaml_headers:
+        revised_content = yaml_header + "\n" + revised_content
+    for html_comment in html_comments:
+        revised_content = html_comment + "\n" + revised_content
+
+    return revised_content
+
+
+def suggest_line_breaks(markdown_text, api_key):
+    """
+    Suggest semantic line breaks in a Markdown document using OpenAI's ChatGPT API.
+
+    Args:
+        markdown_text (str): The content of the Markdown file as a string.
+
+    Returns:
+        str: The suggested Markdown text with semantic line breaks.
+    """
+    chunks = split_into_chunks(markdown_text)
+    # print('temp:')
+    # chunks = [chunks[0]]
+    revised_chunks = [process_chunk(chunk, api_key) for chunk in chunks]
+    return "\n".join(revised_chunks)
+
+
+def prep() -> None:
+
+    api_key = os.getenv("OPENAI_KEY")
+    if not api_key:
+        raise OSError("OPENAI_KEY environment variable is not set.")
+
+    with open("paper.md") as file:
+        markdown_content = file.read()
+
+    revised_content = suggest_line_breaks(markdown_content, api_key)
+
+    with open("paper.md", "w") as file:
+        file.write(revised_content)
