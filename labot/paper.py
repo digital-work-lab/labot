@@ -1,6 +1,7 @@
 import os
 import re
 import subprocess
+from typing import List
 
 import git
 from openai import OpenAI
@@ -106,7 +107,7 @@ def init() -> None:
         push_repository(repository)
 
 
-def split_into_chunks(text, max_chars=4000):
+def split_into_chunks(text: str, max_chars: int = 4000) -> list:
     """
     Split text into chunks that do not exceed max_chars, ensuring chunks are complete sentences.
 
@@ -117,8 +118,8 @@ def split_into_chunks(text, max_chars=4000):
     Returns:
         list: A list of text chunks.
     """
-    chunks = []
-    current_chunk = []
+    chunks: List[str] = []
+    current_chunk: List[str] = []
 
     for line in text.splitlines(keepends=True):
         if sum(len(s) for s in current_chunk) + len(line) <= max_chars:
@@ -133,7 +134,7 @@ def split_into_chunks(text, max_chars=4000):
     return chunks
 
 
-def process_chunk(chunk, api_key):
+def process_chunk(chunk: str, api_key: str) -> str:
     """
     Process a chunk of Markdown to suggest semantic line breaks while ignoring YAML headers and HTML comments.
 
@@ -196,7 +197,7 @@ Provide the revised content with semantic line breaks only:
     return revised_content
 
 
-def suggest_line_breaks(markdown_text, api_key):
+def suggest_line_breaks(markdown_text: str, api_key: str) -> str:
     """
     Suggest semantic line breaks in a Markdown document using OpenAI's ChatGPT API.
 

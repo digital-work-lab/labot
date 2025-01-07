@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-def main():
+def main() -> None:
     """Main function."""
 
     # replace all "- [x] " with "- [ ] " in the docs/* files

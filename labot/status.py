@@ -18,7 +18,7 @@ THESES_OVERVIEW = PRIVATE_DATA / Path(
 )
 
 
-def get_url(page: str) -> str:
+def get_url(page: Path) -> str:
 
     return (
         str(page)
@@ -27,7 +27,7 @@ def get_url(page: str) -> str:
     )
 
 
-def print_status():
+def print_status() -> None:
 
     print("Tasks")  # Role...
 

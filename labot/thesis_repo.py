@@ -5,7 +5,7 @@ from docx import Document
 from github import Github
 
 
-def clean_name(raw_name):
+def clean_name(raw_name: str) -> str:
     parts = raw_name.split(",")
     if len(parts) == 2:
         last_name = parts[0].replace(" ", "").strip()
@@ -14,7 +14,7 @@ def clean_name(raw_name):
     return raw_name.strip()
 
 
-def extract_information(text):
+def extract_information(text: str) -> dict:
     # Define regex patterns
     name_pattern = r"Name:\s*([^\n]+)"
     student_id_pattern = r"Matrikelnummer:\s*(\d+)"
@@ -35,7 +35,7 @@ def extract_information(text):
     student_id = student_id_match.group(1) if student_id_match else None
     topic = topic_match.group(1).strip() if topic_match else None
     date = date_match.group(1) if date_match else None
-    work_time = work_time_match.group(1) if work_time_match else None
+    work_time = work_time_match.group(1) if work_time_match else "NA"
 
     # Return extracted information as a dictionary
     return {
@@ -47,7 +47,7 @@ def extract_information(text):
     }
 
 
-def extract_text_from_word(file_path):
+def extract_text_from_word(file_path: str) -> str:
     try:
         document = Document(file_path)
         text = []
@@ -62,7 +62,7 @@ def extract_text_from_word(file_path):
         return f"An error occurred: {e}"
 
 
-def extract_word_info(file_path):
+def extract_word_info(file_path: str) -> dict:
 
     extracted_text = extract_text_from_word(file_path)
     # print("\nExtracted Text:\n")
@@ -77,8 +77,8 @@ def extract_word_info(file_path):
 # When document signed: post in issue and close?
 
 
-def parse_issue_body(issue_body):
-    parsed_data = {}
+def parse_issue_body(issue_body: str) -> dict:
+    parsed_data: dict = {}
 
     lines = issue_body.splitlines()
 
@@ -93,7 +93,7 @@ def parse_issue_body(issue_body):
     return parsed_data
 
 
-def start_registration(issue_url):
+def start_registration(issue_url: str) -> None:
     g = Github(GITHUB_TOKEN)
 
     try:
@@ -145,7 +145,7 @@ def start_registration(issue_url):
         print(f"An error occurred: {e}")
 
 
-def list_registration_issues(GITHUB_TOKEN):
+def list_registration_issues(GITHUB_TOKEN: str) -> None:
     g = Github(GITHUB_TOKEN)
 
     user = g.get_user()

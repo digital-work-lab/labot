@@ -11,7 +11,6 @@ packages = [{include = "labot"}]
 python = ">=3.10, <3.13"
 gitpython = "^3.1.43"
 click = "^8.1.7"
-click-completion = "^0.5.2"
 pre-commit = "^3.2.0"
 colrev-sync = "0.2.0"
 docx-mailmerge = "^0.5.0"
@@ -26,6 +25,10 @@ openai = "^1.58.1"
 [tool.poetry.scripts]
 labot = "labot.cli:main"
 
+[tool.mypy]
+python_version = 3.9
+warn_unused_configs = true
+ignore_missing_imports = true
 
 [build-system]
 requires = ["poetry-core"]

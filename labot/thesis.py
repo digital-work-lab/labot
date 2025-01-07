@@ -69,18 +69,16 @@ class Thesis:
         return {
             "student": self.student,
             "student_id": self.student_id,
-            "status": self.status,
-            "program": self.program,
+            "degree_program": self.degree_program,
             "work_time_months": self.work_time_months,
             "industry_partner": self.industry_partner,
             "date_of_registration": self.date_of_registration,
-            "deadline": self.deadline,
+            # "deadline": self.deadline,
             "date_of_actual_submission": self.date_of_actual_submission,
             "deadline_for_the_review": self.deadline_for_the_review,
             "date_review_created": self.date_review_created,
             "plagiarism_check_result": self.plagiarism_check_result,
-            "remarks": self.remarks,
-            "archived": self.archived,
+            "status": self.status,
             "supervisor": self.supervisor,
             "title": self.title,
         }
@@ -116,7 +114,7 @@ def get_thesis() -> Thesis:
     return selected_thesis
 
 
-def create_review_file(thesis):
+def create_review_file(thesis: Thesis) -> None:
     print("Creating review file...")
     # Add logic to create the review file here
     review_content = f"""---
@@ -154,7 +152,7 @@ Overall, I therefore recommend a grade of XXXXX for {thesis.student}'s {thesis.d
     webbrowser.open_new_tab(url)
 
 
-def generate_review():
+def generate_review() -> None:
     data = Frontmatter.read_file("review.md")
 
     lines = data["body"].split("\n")
@@ -205,7 +203,7 @@ def grade() -> None:
     generate_review()
 
 
-def load_theses(theses_path="theses"):
+def load_theses(theses_path: Path = Path("theses")) -> list:
     # iterate over all md files in the theses directory
     theses = []
     for thesis_file in Path(theses_path).rglob("*.md"):

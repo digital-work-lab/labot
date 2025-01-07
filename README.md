@@ -28,6 +28,7 @@ Run these commands in an empty directory:
 
 ```
 labot paper --init
+labot paper --prep
 labot thesis
 ```
 
@@ -38,6 +39,8 @@ labot status
 ```
 
 
-For local tests with chatgpt:
+For local tests with chatgpt (at the end of ./.bashrc):
 
+```
 export OPENAI_KEY="your_openai_api_key"
+```

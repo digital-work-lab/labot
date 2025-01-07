@@ -34,7 +34,7 @@ HEADERS = {
 }
 
 
-def detect_event_type():
+def detect_event_type() -> str:
     event_name = os.getenv("GITHUB_EVENT_NAME")
 
     if event_name == "pull_request":
@@ -51,7 +51,7 @@ def detect_event_type():
         return "other"
 
 
-def check_github_token_permissions():
+def check_github_token_permissions() -> None:
     """Check if the GITHUB_TOKEN has permissions to create pull requests and issues."""
     url = f"{BASE_URL}/repos/{REPO_OWNER}/{REPO_NAME}"
     response = requests.get(url, headers=HEADERS)
@@ -79,7 +79,7 @@ def check_github_token_permissions():
     print("GITHUB_TOKEN has the required permissions.")
 
 
-def get_repo_tags(owner, repo_name):
+def get_repo_tags(owner: str, repo_name: str) -> list:
     """Fetch the tags of the repository."""
     url = f"{BASE_URL}/repos/{owner}/{repo_name}/tags"
     response = requests.get(url, headers=HEADERS)
@@ -92,7 +92,7 @@ def get_repo_tags(owner, repo_name):
     return [tag["name"] for tag in tags]
 
 
-def get_repo_topics(owner, repo_name):
+def get_repo_topics(owner: str, repo_name: str) -> list:
     """Fetch the topics of the repository."""
     url = f"{BASE_URL}/repos/{owner}/{repo_name}/topics"
     response = requests.get(url, headers=HEADERS)
@@ -105,15 +105,17 @@ def get_repo_topics(owner, repo_name):
     return topics
 
 
-def _update_labot_file():
+def _update_labot_file() -> None:
     # Define the file paths
-    labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
+    # labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
 
     labot_local_file = Path(".github/workflows/labot.yml")
     labot_package_data = pkgutil.get_data("labot", "data/labot.yml")
+    if not labot_package_data:
+        return
 
     # Function to compute file hash
-    def compute_file_hash(file_path):
+    def compute_file_hash(file_path: Path) -> str:
         with open(file_path, "rb") as f:
             return hashlib.sha256(f.read()).hexdigest()
 
@@ -156,7 +158,7 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
         print("Labot workflow files are identical. No action taken.")
 
 
-def has_changes_to_commit():
+def has_changes_to_commit() -> bool:
     """
     Check if there are any changes in the repository, ignoring newline differences.
     """
@@ -166,14 +168,15 @@ def has_changes_to_commit():
             ["git", "diff", "--ignore-space-at-eol", "--exit-code"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
         return result.returncode != 0  # Non-zero exit code means changes exist
     except Exception as e:
         print(f"Error checking repository changes: {e}")
         return False
 
-def _colrev_sync_references():
+
+def _colrev_sync_references() -> None:
 
     # Run the colrev-sync command
     try:
@@ -257,7 +260,7 @@ def _colrev_sync_references():
         return
 
 
-def run_research_repo_checks():
+def run_research_repo_checks() -> None:
     """Run checks specific to research repositories."""
     global VALID
     print("Running research repository checks...")
@@ -283,7 +286,7 @@ def run_research_repo_checks():
     _colrev_sync_references()
 
 
-def run_teaching_repo_checks():
+def run_teaching_repo_checks() -> None:
     """Run checks specific to teaching repositories."""
     global VALID
 
@@ -304,11 +307,11 @@ def run_teaching_repo_checks():
         VALID = False
 
 
-def check_paper_files(paper_files, references):
+def check_paper_files(paper_files: list, references: dict) -> None:
     """Check the paper files."""
     global VALID
 
-    def validate_structure(content, paper_id, expected_title):
+    def validate_structure(content: str, paper_id: str, expected_title: str) -> bool:
         """Validate the structure of a single paper file."""
         # Define the expected structure template with placeholders
         structure_template = f"# {paper_id}\n" "\n" f"## {expected_title}\n" "\n"
@@ -347,7 +350,7 @@ def check_paper_files(paper_files, references):
         print("All paper files are correctly structured.")
 
 
-def run_knowledge_repo_checks():
+def run_knowledge_repo_checks() -> None:
     """Run checks specific to the knowledge repository."""
     global VALID
 
@@ -409,7 +412,7 @@ def run_knowledge_repo_checks():
     _colrev_sync_references()
 
 
-def get_pull_request_number():
+def get_pull_request_number() -> int:
     """
     Retrieve the pull request number from the GitHub Actions environment.
 
@@ -433,12 +436,12 @@ def get_pull_request_number():
             return pr_number
         else:
             print("This event is not a pull request.")
-            return None
+            return -1
     except Exception as e:
         raise RuntimeError(f"Failed to parse the event payload: {e}")
 
 
-def get_pull_request_changes(pr_number):
+def get_pull_request_changes(pr_number: int) -> dict:
     """
     Fetch the changes introduced by the commits associated with a pull request.
 
@@ -470,21 +473,22 @@ def get_pull_request_changes(pr_number):
     # Make the API request to fetch the changes
     response = requests.get(api_url, headers=headers)
 
-    if response.status_code == 200:
-        # Parse the JSON response and extract file patches
-        files = response.json()
-        changes = {
-            file["filename"]: file.get(
-                "patch", "No patch available (binary or large file)"
-            )
-            for file in files
-        }
-        return changes
-    else:
-        return f"Failed to fetch changes. Status code: {response.status_code}, Response: {response.text}"
+    if response.status_code != 200:
+        print(
+            f"Failed to fetch changes. Status code: {response.status_code}, Response: {response.text}"
+        )
+        raise RuntimeError("Failed to fetch changes.")
+
+    # Parse the JSON response and extract file patches
+    files = response.json()
+    changes = {
+        file["filename"]: file.get("patch", "No patch available (binary or large file)")
+        for file in files
+    }
+    return changes
 
 
-def evaluate_changes_with_openai(changes):
+def evaluate_changes_with_openai(changes: dict) -> str:
     """
     Use OpenAI's GPT to evaluate if the changes align with defined values.
 
@@ -552,7 +556,7 @@ def evaluate_changes_with_openai(changes):
         return f"An error occurred while communicating with OpenAI: {e}"
 
 
-def add_comment_to_pull_request(pr_number, comment_body):
+def add_comment_to_pull_request(pr_number: int, comment_body: str) -> str:
     """
     Add a comment to a pull request on GitHub.
 
@@ -593,8 +597,10 @@ def add_comment_to_pull_request(pr_number, comment_body):
         return f"Failed to add comment. Status code: {response.status_code}, Response: {response.text}"
 
 
-def run_pull_request_checks():
+def run_pull_request_checks() -> None:
     pr_number = get_pull_request_number()
+    if pr_number < 0:
+        return
     changes = get_pull_request_changes(pr_number)
     print(f"Changes in pull request {pr_number}: {changes}")
     response = evaluate_changes_with_openai(changes)
@@ -602,14 +608,14 @@ def run_pull_request_checks():
         add_comment_to_pull_request(pr_number, response)
 
 
-def read_availability_md(file_path):
+def read_availability_md(file_path: str) -> str:
     """Reads the Mermaid chart from the markdown file."""
     with open(file_path) as file:
         content = file.read()
     return content
 
 
-def parse_mermaid_chart(content):
+def parse_mermaid_chart(content: str) -> tuple:
     """Parses x-axis, bar, and line data from the Mermaid chart."""
     x_axis = re.search(r"x-axis \[([^\]]+)\]", content).group(1).split(", ")
     bar_data = list(
@@ -621,7 +627,9 @@ def parse_mermaid_chart(content):
     return x_axis, bar_data, line_data
 
 
-def update_mermaid_chart(x_axis, bar_data, line_data, currently):
+def update_mermaid_chart(
+    x_axis: list, bar_data: list, line_data: list, currently: int
+) -> str:
     """Updates the Mermaid chart data."""
     # Remove the first data point
     x_axis.pop(0)
@@ -652,7 +660,7 @@ xychart-beta
     return updated_chart
 
 
-def write_availability_md(file_path, content):
+def write_availability_md(file_path: str, content: str) -> None:
     """Writes the updated Mermaid chart back to the markdown file."""
     with open(file_path, "w") as file:
         file.write(content)
@@ -664,7 +672,7 @@ def write_availability_md(file_path, content):
     origin.push("main")
 
 
-def generate_mermaid_chart(theses):
+def generate_mermaid_chart(theses: list) -> None:
 
     file_path = "_includes/availability.md"
     currently = sum(1 for thesis in theses if thesis.status != "archived")
@@ -679,7 +687,7 @@ def generate_mermaid_chart(theses):
     write_availability_md(file_path, updated_chart)
 
 
-def run_theses_checks():
+def run_theses_checks() -> None:
 
     current_dir = os.getcwd()
     os.chdir("..")
@@ -689,13 +697,13 @@ def run_theses_checks():
             f"git clone https://{GITHUB_TOKEN}@github.com/digital-work-lab/theses-confidential.git"
         )
     os.chdir(repo_path)
-    theses_path = os.getcwd() + "/theses"
+    theses_path = Path.cwd() / "theses"
     theses = labot.thesis.load_theses(theses_path=theses_path)
     os.chdir(current_dir)
     generate_mermaid_chart(theses)
 
 
-def main():
+def main() -> None:
     """Main function."""
     check_github_token_permissions()
 
