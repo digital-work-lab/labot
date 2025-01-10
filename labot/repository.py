@@ -34,6 +34,145 @@ HEADERS = {
 }
 
 
+project_root = Path.cwd()
+assets_dir = Path("assets")
+ignore_file = (
+    project_root / ".github/workflows/.asset_ignore.txt"
+)  # Path to the .asset_ignore.txt file
+
+
+# Regex pattern to find asset links in markdown files
+asset_link_pattern = re.compile(r"!\[.*?\]\((.*?)\)")
+img_src_pattern = re.compile(r'<img\s[^>]*src="([^"]+)"', re.IGNORECASE)
+a_href_pattern = re.compile(r'<a\s[^>]*href="([^"]+)"', re.IGNORECASE)
+
+
+def load_ignored_assets(ignore_file):
+    if not ignore_file.exists():
+        return set()
+
+    with open(ignore_file, encoding="utf-8") as f:
+        ignored_paths = {line.strip() for line in f if line.strip()}
+
+    # Convert relative paths in the ignore file to absolute paths
+    ignored_assets = {
+        project_root / Path(ignored).resolve() for ignored in ignored_paths
+    }
+    return ignored_assets
+
+
+def find_linked_assets(markdown_dir):
+    linked_assets = set()
+
+    # Walk through all markdown files
+    for root, _, files in os.walk(markdown_dir):
+        for file in files:
+            if file.endswith(".md"):
+                filepath = Path(root) / file
+                with open(filepath, encoding="utf-8") as f:
+                    content = f.read()
+                    # Find all asset links in the markdown file
+                    links = asset_link_pattern.findall(content)
+                    links.extend(img_src_pattern.findall(content))
+                    links.extend(a_href_pattern.findall(content))
+                    for link in links:
+                        # Convert to absolute path if necessary and normalize
+                        asset_path = (Path(root) / link).resolve()
+                        linked_assets.add(asset_path)
+
+    return linked_assets
+
+
+def find_all_assets(assets_dir):
+    all_assets = set()
+
+    # Walk through all files in the assets directory
+    for root, _, files in os.walk(assets_dir):
+        for file in files:
+            asset_path = Path(root) / file
+            all_assets.add(asset_path.resolve())
+
+    return all_assets
+
+
+def find_dangling_assets():
+    # Find all linked assets
+    linked_assets = find_linked_assets(Path("slides"))
+    linked_assets.update(find_linked_assets(Path("docs")))
+
+    # Find all files in the assets directory
+    all_assets = find_all_assets(assets_dir)
+
+    # Load ignored assets
+    ignored_assets = load_ignored_assets(ignore_file)
+
+    # Identify the dangling assets
+    dangling_assets = all_assets - linked_assets - ignored_assets
+
+    return dangling_assets
+
+
+def check_dangling_assets():
+
+    dangling_assets = find_dangling_assets()
+    if not dangling_assets:
+        print("No dangling assets found.")
+
+    print(f"Dangling assets: {dangling_assets}")
+
+    # Initialize a string to store the output
+    dangling_assets_content = "## Dangling Assets:\n"
+    for asset in dangling_assets:
+        dangling_assets_content += f"- `{asset}`\n"
+
+    issue_title = "Assets report"
+
+    # Initialize the GitHub API client
+    g = Github(GITHUB_TOKEN)
+
+    try:
+        # Get the repository
+        repo_name = f"{REPO_OWNER}/{REPO_NAME}"
+        repo = g.get_repo(repo_name)
+
+        # Check if an issue with the same title already exists
+        issues = repo.get_issues(state="open")
+        existing_issue = None
+
+        for issue in issues:
+            if issue.title == issue_title:
+                print(f"Issue already exists: {issue.html_url}")
+                existing_issue = issue
+                break
+
+        if not existing_issue and dangling_assets:
+            # Create a new issue if it does not exist
+            new_issue = repo.create_issue(
+                title=issue_title, body=dangling_assets_content
+            )
+            print(f"New issue created: {new_issue.html_url}")
+
+        if existing_issue and dangling_assets:
+            existing_issue.edit(body=dangling_assets_content)
+            print(f"Issue updated: {existing_issue.html_url}")
+        if existing_issue and not dangling_assets:
+            existing_issue.edit(state="closed")
+            print(f"Issue closed: {existing_issue.html_url}")
+
+        # for issue in issues:
+        #     if issue.title == issue_title:
+        #         print(f"Issue already exists: {issue.html_url}")
+        #         return issue
+
+        # # Create a new issue if it does not exist
+        # new_issue = repo.create_issue(title=issue_title, body=dangling_assets_content)
+        # print(f"New issue created: {new_issue.html_url}")
+        # return issue
+
+    except Exception as e:
+        print(f"Error: {e}")
+
+
 def detect_event_type() -> str:
     event_name = os.getenv("GITHUB_EVENT_NAME")
 
@@ -292,19 +431,20 @@ def run_teaching_repo_checks() -> None:
 
     # Require a reset_course.yml workflow
 
-    workflows_url = f"{BASE_URL}/repos/{REPO_OWNER}/{REPO_NAME}/actions/workflows"
-    response = requests.get(workflows_url, headers=HEADERS)
+    # workflows_url = f"{BASE_URL}/repos/{REPO_OWNER}/{REPO_NAME}/actions/workflows"
+    # response = requests.get(workflows_url, headers=HEADERS)
 
-    if response.status_code != 200:
-        print(f"Error fetching workflows: {response.json()}")
-        VALID = False
+    # if response.status_code != 200:
+    #     print(f"Error fetching workflows: {response.json()}")
+    #     VALID = False
 
-    workflows = response.json().get("workflows", [])
-    workflow_names = [workflow["name"] for workflow in workflows]
+    # workflows = response.json().get("workflows", [])
+    # workflow_names = [workflow["name"] for workflow in workflows]
 
-    if ".github/workflows/reset_course.yml" not in workflow_names:
-        print("No 'reset_course.yml' workflow found.")
-        VALID = False
+    # # TBD: should this be an option of the manually-dispatched labot workflow?
+    # if ".github/workflows/reset_course.yml" not in workflow_names:
+    #     print("No 'reset_course.yml' workflow found.")
+    #     VALID = False
 
 
 def check_paper_files(paper_files: list, references: dict) -> None:
@@ -715,8 +855,11 @@ def main() -> None:
 
     if "research" in topics and REPO_NAME not in ["work_hub"]:
         run_research_repo_checks()
-    if "teaching-material" in topics:
+    if "teaching-materials" in topics:
         run_teaching_repo_checks()
+
+        # TODO : also for other repos?
+        check_dangling_assets()
 
     if REPO_NAME in ["work_hub"]:
         run_knowledge_repo_checks()
