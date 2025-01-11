@@ -21,6 +21,7 @@ inquirer = "^3.4.0"
 pandas = "^2.2.3"
 yamale = "^5.2.1"
 openai = "^1.58.1"
+pypdf2 = "^3.0.1"
 
 [tool.poetry.scripts]
 labot = "labot.cli:main"
