@@ -10,6 +10,7 @@ from urllib.parse import quote
 import git
 from docx import Document
 from github import Github
+from github.Issue import Issue
 from PyPDF2 import PdfReader
 
 import labot.thesis
@@ -272,7 +273,7 @@ class ThesisRepo:
 
         return registration_issues
 
-    def consistency_checks(self, registration: Github.Issue) -> None:
+    def consistency_checks(self, registration: Issue) -> None:
 
         # Check whether Date is after Zulassung Date
         if registration["Date"] < registration["Zulassung Date"]:
@@ -455,7 +456,7 @@ class ThesisRepo:
                 submissions.append(issue)
         return submissions
 
-    def _handle_submissions(self, new_submission: Github.Issue, theses: list) -> None:
+    def _handle_submissions(self, new_submission: Issue, theses: list) -> None:
 
         print(new_submission)
         comments = list(new_submission.get_comments())
