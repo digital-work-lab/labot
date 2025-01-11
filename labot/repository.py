@@ -451,10 +451,10 @@ def check_paper_files(paper_files: list, references: dict) -> None:
     """Check the paper files."""
     global VALID
 
-    def validate_structure(content: str, paper_id: str, expected_title: str) -> bool:
+    def validate_structure(content: str, expected_title: str) -> bool:
         """Validate the structure of a single paper file."""
         # Define the expected structure template with placeholders
-        structure_template = f"# {paper_id}\n" "\n" f"## {expected_title}\n" "\n"
+        structure_template = f"# {expected_title}\n" "\n"
         return content.strip().startswith(structure_template.strip())
 
     errors = []
@@ -479,7 +479,7 @@ def check_paper_files(paper_files: list, references: dict) -> None:
 
         expected_title = references[paper_id].get("title", "<Full title of the paper>")
 
-        if not validate_structure(content, paper_id, expected_title):
+        if not validate_structure(content, expected_title):
             errors.append(f"File {paper_file} does not match the expected structure.")
 
     if errors:
