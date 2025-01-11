@@ -27,9 +27,14 @@ The entrypoint is `labot.repository.main()`.
 Run these commands in an empty directory:
 
 ```
+# In an empty repository:
 labot paper --init
 labot paper --prep
-labot thesis
+
+labot thesis --submissions
+labot thesis --register
+labot thesis --grade
+
 ```
 
 Work-in-progress:
@@ -43,4 +48,6 @@ For local tests with chatgpt (at the end of ./.bashrc):
 
 ```
 export OPENAI_KEY="your_openai_api_key"
+expport GITHUB_TOKEN="your_pat_token"
+expport LABOT_PAT_TOKEN="labot_pat_token"
 ```

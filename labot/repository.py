@@ -47,7 +47,7 @@ img_src_pattern = re.compile(r'<img\s[^>]*src="([^"]+)"', re.IGNORECASE)
 a_href_pattern = re.compile(r'<a\s[^>]*href="([^"]+)"', re.IGNORECASE)
 
 
-def load_ignored_assets(ignore_file):
+def load_ignored_assets(ignore_file: Path) -> set:
     if not ignore_file.exists():
         return set()
 
@@ -61,7 +61,7 @@ def load_ignored_assets(ignore_file):
     return ignored_assets
 
 
-def find_linked_assets(markdown_dir):
+def find_linked_assets(markdown_dir: Path) -> set:
     linked_assets = set()
 
     # Walk through all markdown files
@@ -83,7 +83,7 @@ def find_linked_assets(markdown_dir):
     return linked_assets
 
 
-def find_all_assets(assets_dir):
+def find_all_assets(assets_dir: Path) -> set:
     all_assets = set()
 
     # Walk through all files in the assets directory
@@ -95,7 +95,7 @@ def find_all_assets(assets_dir):
     return all_assets
 
 
-def find_dangling_assets():
+def find_dangling_assets() -> set:
     # Find all linked assets
     linked_assets = find_linked_assets(Path("slides"))
     linked_assets.update(find_linked_assets(Path("docs")))
@@ -112,7 +112,7 @@ def find_dangling_assets():
     return dangling_assets
 
 
-def check_dangling_assets():
+def check_dangling_assets() -> None:
 
     dangling_assets = find_dangling_assets()
     if not dangling_assets:

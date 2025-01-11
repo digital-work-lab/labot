@@ -215,3 +215,35 @@ def load_theses(theses_path: Path = Path("theses")) -> list:
         theses.append(Thesis(**data[0][0]))
 
     return theses
+
+
+def update_thesis_metadata(thesis: Thesis) -> None:
+
+    # Update the yaml metadata of the thesis
+
+    # Load the file
+    thesis_file = Path("theses") / Path(thesis.filename)
+    thesis_content = thesis_file.read_text()
+
+    # Generate yaml header
+    yaml_header = f"""---
+student: {thesis.student}
+title: "{thesis.title}"
+level: {thesis.level}
+student_id: {thesis.student_id}
+status: {thesis.status}
+supervisor: {thesis.supervisor}
+degree_program: {thesis.degree_program}
+industry_partner: {thesis.industry_partner}
+date_of_registration: '{thesis.date_of_registration}'
+work_time_months: {thesis.work_time_months}
+date_of_actual_submission: '{thesis.date_of_actual_submission}'
+plagiarism_check_result: '{thesis.plagiarism_check_result}'
+deadline_for_the_review: '{thesis.deadline_for_the_review}'
+date_review_created: '{thesis.date_review_created}'
+---"""
+    # replace existing yaml header
+    thesis_content = thesis_content.split("---", 2)[2]
+
+    # Update the file
+    thesis_file.write_text(yaml_header + thesis_content)

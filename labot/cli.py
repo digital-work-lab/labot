@@ -40,6 +40,18 @@ def status(
 
 @main.command  # (help_priority=1)
 @click.option(
+    "--submissions",
+    is_flag=True,
+    default=False,
+    help="Process submissions",
+)
+@click.option(
+    "--register",
+    is_flag=True,
+    default=False,
+    help="Register a thesis",
+)
+@click.option(
     "--grade",
     is_flag=True,
     default=False,
@@ -48,12 +60,27 @@ def status(
 @click.pass_context
 def thesis(
     ctx: click.core.Context,
+    submissions: bool,
     grade: bool,
+    register: bool,
 ) -> None:
-    import labot.thesis
 
     if grade:
+        import labot.thesis
+
         labot.thesis.grade()
+        return
+
+    # Thesis repo commands
+    import labot.thesis_repo
+
+    tr = labot.thesis_repo.ThesisRepo()
+
+    if register:
+        tr.registrations()
+
+    if submissions:
+        tr.submissions()
 
 
 @main.command  # (help_priority=1)
