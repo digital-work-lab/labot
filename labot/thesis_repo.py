@@ -14,6 +14,7 @@ from github.Issue import Issue
 from PyPDF2 import PdfReader
 
 import labot.thesis
+from labot.constants import ThesisStatus
 
 
 class ThesisRepo:
@@ -508,7 +509,7 @@ class ThesisRepo:
 
             thesis = None
             for current_thesis in theses:
-                if current_thesis.status != "registered":
+                if current_thesis.status != ThesisStatus.REGISTERED:
                     continue
 
                 if current_thesis.student.split(",")[
@@ -537,7 +538,7 @@ class ThesisRepo:
             new_path = Path.cwd() / "submissions" / new_filename
             submission_pdf.rename(new_path)
             # update status in the thesis file
-            thesis.status = "submitted"
+            thesis.status = ThesisStatus.SUBMITTED
             thesis.date_of_actual_submission = str(submission_date)
             labot.thesis.update_thesis_metadata(thesis)
 

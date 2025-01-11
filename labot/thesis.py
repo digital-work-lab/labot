@@ -11,15 +11,6 @@ import yamale
 from frontmatter import Frontmatter
 from mailmerge import MailMerge
 
-HANDBOOK_PATH = Path("/home/gerit/ownCloud/data/handbook")
-# TODO : similarly: should know about nextcloud paths
-
-PRIVATE_DATA = Path("/home/gerit/ownCloud/digital-work-lab/")
-
-THESES_YAML_PATH = Path(
-    "/home/gerit/ownCloud/data/teaching/theses-confidential/theses.yaml"
-)
-
 
 class Thesis:
     def __init__(
@@ -50,7 +41,7 @@ class Thesis:
         self.work_time_months = work_time_months
         self.industry_partner = industry_partner
         self.date_of_registration = date_of_registration
-        # TODO : calcualte
+        # TODO : calculate
         # self.deadline = deadline
         self.date_of_actual_submission = date_of_actual_submission
         self.deadline_for_the_review = deadline_for_the_review

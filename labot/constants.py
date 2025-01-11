@@ -4,6 +4,14 @@
 # pylint: disable=colrev-missed-constant-usage
 
 
+class ThesisStatus:
+    """Thesis status"""
+
+    REGISTERED = "registered"
+    SUBMITTED = "submitted"
+    ARCHIVED = "archived"
+
+
 class ExitCodes:
     """Exit codes"""
 
