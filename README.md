@@ -35,6 +35,7 @@ labot thesis --submissions
 labot thesis --register
 labot thesis --grade
 
+labot notes
 ```
 
 Work-in-progress:

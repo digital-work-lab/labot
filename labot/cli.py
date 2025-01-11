@@ -108,6 +108,16 @@ def paper(
         labot.paper.prep()
 
 
+@main.command
+@click.pass_context
+def notes(
+    ctx: click.core.Context,
+) -> None:
+    import labot.notes
+
+    labot.notes.check_notes()
+
+
 @main.command  # (help_priority=1)
 @click.option(
     "--links",
