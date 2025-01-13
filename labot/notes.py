@@ -2,17 +2,20 @@
 """Labot notes management."""
 from __future__ import annotations
 
-import colrev.loader.load_utils
 from pathlib import Path
 
-def get_missing_references(pdfs, references)-> list:
+import colrev.loader.load_utils
+
+
+def get_missing_references(pdfs: list, references: dict) -> list:
     missing_references = []
     for pdf in pdfs:
         if pdf.stem not in references:
             missing_references.append(pdf.stem)
     return missing_references
 
-def get_missing_paper_summaries(papers_paths, references)-> list:
+
+def get_missing_paper_summaries(papers_paths: list, references: dict) -> list:
     papers = [str(paper_path.stem) for paper_path in papers_paths]
     missing_paper_summaries = []
     for reference in references:
@@ -20,42 +23,30 @@ def get_missing_paper_summaries(papers_paths, references)-> list:
             missing_paper_summaries.append(reference)
     return missing_paper_summaries
 
-def create_paper_summary(missing_paper_summary, references) -> None:
+
+def create_paper_summary(missing_paper_summary: dict, references: dict) -> None:
 
     paper_metadata = references[missing_paper_summary]
-    # create summary file in papers dir
     paper_summary = Path(f"papers/{missing_paper_summary}.md")
-    # structure should be:
-    """
-        # <Paper-ID>
-
-    ## <Full title of the paper>
-
-    ## Abstract
-    <Summary of the research>
-
-    <Core takeaways from the research>
-
-    ## Connections
-    <Links to overarching concepts from the concepts/ directory>"""
     with open(paper_summary, "w") as f:
-        f.write(f"# {paper_metadata['ID']}\n\n")
-        f.write(f"## {paper_metadata['title']}\n\n")
-        f.write(f"## Abstract\n\n{paper_metadata['abstract']}\n\n")
-        f.write(f"<Core takeaways from the research>\n\n")
-        f.write(f"## Connections\n\n<Links to overarching concepts from the concepts/ directory>")
+        f.write(f"# {paper_metadata['title']}\n\n")
+        f.write(f"## Abstract\n\n{paper_metadata.get('abstract', 'no-abstract')}\n\n")
+        f.write("<Core takeaways from the research>\n\n")
+        f.write(
+            "## Connections\n\n<Links to overarching concepts from the concepts/ directory>"
+        )
+
 
 def check_notes() -> None:
 
-    pdfs = list(Path('pdfs').iterdir())
-    papers = list(Path('papers').iterdir())
+    pdfs = list(Path("pdfs").iterdir())
+    papers = list(Path("papers").iterdir())
     # concepts = list(Path('concepts').iterdir())
 
     references_file = Path("references.bib")
     references = colrev.loader.load_utils.load(
         filename=references_file,
     )
-
 
     missing_references = get_missing_references(pdfs, references)
     print(f"TODO : add references for {missing_references}")
@@ -68,7 +59,7 @@ def check_notes() -> None:
     # print(pdfs)
     # print(papers)
     # print(references)
-    
+
 
 if __name__ == "__main__":
     check_notes()
