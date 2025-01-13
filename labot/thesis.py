@@ -34,6 +34,7 @@ class Thesis:
     ):
         self.student = student
         self.filename = filename
+        self.id = filename[:3]
         self.student_id = student_id
         self.level = level
         self.status = status
@@ -55,6 +56,10 @@ class Thesis:
 
     def __repr__(self) -> str:
         return self.__str__()
+
+    def formatted_student(self) -> str:
+        last, first = self.student.split(", ")
+        return f"{first} {last}"
 
     def to_dict(self) -> dict:
         return {
@@ -109,10 +114,10 @@ def create_review_file(thesis: Thesis) -> None:
     print("Creating review file...")
     # Add logic to create the review file here
     review_content = f"""---
-subject: "Review: {thesis.degree_program}'s Thesis"
+subject: "Review: {thesis.level.capitalize()}'s Thesis"
 candidate: "{thesis.student}"
 student_id: {int(thesis.student_id)}
-thesis_id: 35.XXXXXXXX
+thesis_id: 35.{thesis.id}
 title: "{thesis.title}"
 ---
 
@@ -133,7 +138,7 @@ https://digital-work-lab.github.io/handbook/docs/30-teaching/30_processes/30.40.
 The main strengths are ...
 The main shortcomings are ...
 
-Overall, I therefore recommend a grade of XXXXX for {thesis.student}'s {thesis.degree_program}'s thesis.
+Overall, I therefore recommend a grade of XXXXX for {thesis.formatted_student()}'s {thesis.level.capitalize()}'s thesis.
 """
 
     with open("review.md", "w") as review_file:
