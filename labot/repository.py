@@ -7,11 +7,13 @@ import pkgutil
 import re
 import subprocess
 import sys
+from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
 
 import colrev.loader.load_utils
 import requests
+import yaml
 from git import Repo
 from github import Github
 from openai import OpenAI
@@ -399,6 +401,128 @@ def _colrev_sync_references() -> None:
         return
 
 
+def parse_markdown_to_dict(file_path):
+    """
+    Parses a markdown file with a YAML header into a Python dictionary (OrderedDict).
+
+    Args:
+        file_path (str): The path to the markdown file.
+
+    Returns:
+        dict: The parsed YAML content as an OrderedDict.
+    """
+    with open(file_path, encoding="utf-8") as file:
+        content = file.read()
+
+    # Extract the YAML block (content between the "---")
+    yaml_content = content.strip().split("---")[1]
+
+    # Parse the YAML content into an OrderedDict to preserve the order
+    parsed_dict = yaml.safe_load(yaml_content)
+
+    # Ensure the result is an OrderedDict (if not already)
+    if isinstance(parsed_dict, dict):
+        parsed_dict = OrderedDict(parsed_dict)
+
+    return parsed_dict
+
+
+def _check_update_paper_md():
+
+    paper_md = Path("paper.md")
+    if not paper_md.exists():
+        print("No 'paper.md' file found in the repository.")
+        return
+
+    metadata = parse_markdown_to_dict(paper_md)
+    # print(metadata)
+    if "project" not in metadata:
+        metadata["project"] = {}
+    if "status" not in metadata["project"]:
+        metadata["project"]["status"] = "writing"
+    if "started" not in metadata["project"]:
+        metadata["project"]["started"] = datetime.now().strftime("%Y-%m-%d")
+    if "manuscriptrepository" in metadata["project"]:
+        if metadata["project"]["manuscriptrepository"].startswith(
+            "https://github.com/"
+        ):
+            metadata["project"]["manuscriptrepository"] = (
+                metadata["project"]["manuscriptrepository"].replace(
+                    "https://github.com/", "git@github.com:"
+                )
+                + ".git"
+            )
+    if "datarepository" in metadata["project"]:
+        if metadata["project"]["datarepository"].startswith("https://github.com/"):
+            metadata["project"]["datarepository"] = (
+                metadata["project"]["datarepository"].replace(
+                    "https://github.com/", "git@github.com:"
+                )
+                + ".git"
+            )
+
+    paper_md_content = paper_md.read_text(encoding="utf-8")
+    # remove yaml header (content after second "---")
+    paper_md_content = paper_md_content.split("---", 2)[2]
+    with open(paper_md, "w", encoding="utf-8") as file:
+        file.write(
+            f"---\n{yaml.dump(metadata, allow_unicode=True, default_flow_style=False)}---{paper_md_content}"
+        )
+
+    # If there are changes, create a branch, commit, push, and pull-request
+    repo = Repo(os.getcwd())
+    current_branch = repo.active_branch.name
+    if has_changes_to_commit():
+        new_branch = "update_paper_md"
+        # Get the current branch
+        if current_branch == "main":
+            if new_branch not in repo.heads:
+                # Create the new branch from the current commit
+                new_branch_ref = repo.create_head(new_branch, repo.head.commit)
+                new_branch_ref.checkout()
+                print(f"New branch '{new_branch}' created and checked out.")
+            else:
+                new_branch_ref = repo.heads[new_branch]
+                new_branch_ref.checkout()
+                print(f"Branch '{new_branch}' already exists. Checked out.")
+
+        # Add all changes
+        repo.git.add("--all")
+
+        # Create a commit for the changes
+        if not repo.index.commit("Update paper.md"):
+            print("No changes to commit.")
+            return
+
+        origin = repo.remotes.origin
+        if current_branch == "main":
+            # Push the new branch to GitHub
+            origin.push(new_branch)
+            print(f"Branch '{new_branch}' pushed to GitHub.")
+
+            # Create a pull request
+            g = Github(GITHUB_TOKEN)
+            repo_name = f"{REPO_OWNER}/{REPO_NAME}"
+            repo_github = g.get_repo(repo_name)
+
+            pr = repo_github.create_pull(
+                title="Update paper.md",
+                body="This PR was created by Labot.",
+                head=new_branch,
+                base="main",
+            )
+            print(f"Pull Request created: {pr.html_url}")
+
+            # Switch to main
+            repo.heads.main.checkout()
+        else:
+            origin.push(current_branch)
+
+    else:
+        print("No changes found in the branch. Skipping PR creation.")
+        return
+
+
 def run_research_repo_checks() -> None:
     """Run checks specific to research repositories."""
     global VALID
@@ -421,6 +545,8 @@ def run_research_repo_checks() -> None:
     if not os.path.isfile("paper.md"):
         print("No 'paper.md' file found in the repository.")
         VALID = False
+
+    _check_update_paper_md()
 
     _colrev_sync_references()
 
