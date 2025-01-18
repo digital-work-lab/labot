@@ -16,7 +16,7 @@ graph LR
 ## GitHub actions
 
 Labot also runs as a GitHub action in different repositories (in the `labot.yaml`, which requires repo and workflow rights)
-The entrypoint is `labot.repository.main()`.
+The entrypoint is [`labot.repository.main()`](labot/repository.py).
 
 **Paper repository**
 
