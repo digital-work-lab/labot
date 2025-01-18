@@ -20,28 +20,15 @@ from openai import OpenAI
 
 import labot.thesis
 
-# Set up GitHub API URL and token
-GITHUB_TOKEN = os.getenv(
-    "GITHUB_TOKEN"
-)  # GitHub token should be set in the environment variable
-REPO_OWNER, REPO_NAME = os.getenv("GITHUB_REPOSITORY").split(
-    "/"
-)  # Get owner/repo from the GitHub environment
-
-VALID = True
-BASE_URL = "https://api.github.com"
-HEADERS = {
-    "Authorization": f"Bearer {GITHUB_TOKEN}",
-    "Accept": "application/vnd.github.v3+json",
-}
-
-
-project_root = Path.cwd()
-assets_dir = Path("assets")
-ignore_file = (
-    project_root / ".github/workflows/.asset_ignore.txt"
-)  # Path to the .asset_ignore.txt file
-
+yaml.add_representer(
+    OrderedDict,
+    lambda dumper, data: dumper.represent_mapping(
+        "tag:yaml.org,2002:map", data.items()
+    ),
+)
+yaml.add_representer(
+    tuple, lambda dumper, data: dumper.represent_sequence("tag:yaml.org,2002:seq", data)
+)
 
 # Regex pattern to find asset links in markdown files
 asset_link_pattern = re.compile(r"!\[.*?\]\((.*?)\)")
@@ -49,959 +36,980 @@ img_src_pattern = re.compile(r'<img\s[^>]*src="([^"]+)"', re.IGNORECASE)
 a_href_pattern = re.compile(r'<a\s[^>]*href="([^"]+)"', re.IGNORECASE)
 
 
-def load_ignored_assets(ignore_file: Path) -> set:
-    if not ignore_file.exists():
-        return set()
+class Repository:
 
-    with open(ignore_file, encoding="utf-8") as f:
-        ignored_paths = {line.strip() for line in f if line.strip()}
+    def __init__(self) -> None:
 
-    # Convert relative paths in the ignore file to absolute paths
-    ignored_assets = {
-        project_root / Path(ignored).resolve() for ignored in ignored_paths
-    }
-    return ignored_assets
+        # GitHub token should be set in the environment variable
+        self.GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+        self.GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
+        if not self.GITHUB_TOKEN or not self.GITHUB_REPOSITORY:
+            print("GITHUB_TOKEN or GITHUB_REPOSITORY environment variable is not set.")
+            sys.exit(1)
+        # self.REPO_OWNER: str = self.GITHUB_REPOSITORY("/")[0]
+        self.REPO_NAME: str = self.GITHUB_REPOSITORY.split("/")[1]
 
+        # Retrieve the OpenAI API key from the environment
+        self.OPENAI_KEY = os.getenv("OPENAI_KEY") or ""
 
-def find_linked_assets(markdown_dir: Path) -> set:
-    linked_assets = set()
+        self.github_repo = Github(self.GITHUB_TOKEN).get_repo(self.GITHUB_REPOSITORY)
+        self.local_repo = Repo(Path.cwd())
 
-    # Walk through all markdown files
-    for root, _, files in os.walk(markdown_dir):
-        for file in files:
-            if file.endswith(".md"):
-                filepath = Path(root) / file
-                with open(filepath, encoding="utf-8") as f:
-                    content = f.read()
-                    # Find all asset links in the markdown file
-                    links = asset_link_pattern.findall(content)
-                    links.extend(img_src_pattern.findall(content))
-                    links.extend(a_href_pattern.findall(content))
-                    for link in links:
-                        # Convert to absolute path if necessary and normalize
-                        asset_path = (Path(root) / link).resolve()
-                        linked_assets.add(asset_path)
+        self.VALID = True
+        self.GH_API_BASE_URL = "https://api.github.com"
+        self.HEADERS = {
+            "Authorization": f"Bearer {self.GITHUB_TOKEN}",
+            "Accept": "application/vnd.github.v3+json",
+        }
 
-    return linked_assets
-
-
-def find_all_assets(assets_dir: Path) -> set:
-    all_assets = set()
-
-    # Walk through all files in the assets directory
-    for root, _, files in os.walk(assets_dir):
-        for file in files:
-            asset_path = Path(root) / file
-            all_assets.add(asset_path.resolve())
-
-    return all_assets
-
-
-def find_dangling_assets() -> set:
-    # Find all linked assets
-    linked_assets = find_linked_assets(Path("slides"))
-    linked_assets.update(find_linked_assets(Path("docs")))
-
-    # Find all files in the assets directory
-    all_assets = find_all_assets(assets_dir)
-
-    # Load ignored assets
-    ignored_assets = load_ignored_assets(ignore_file)
-
-    # Identify the dangling assets
-    dangling_assets = all_assets - linked_assets - ignored_assets
-
-    return dangling_assets
-
-
-def check_dangling_assets() -> None:
-
-    dangling_assets = find_dangling_assets()
-    if not dangling_assets:
-        print("No dangling assets found.")
-
-    print(f"Dangling assets: {dangling_assets}")
-
-    # Initialize a string to store the output
-    dangling_assets_content = "## Dangling Assets:\n"
-    for asset in dangling_assets:
-        dangling_assets_content += f"- `{asset}`\n"
-
-    issue_title = "Assets report"
-
-    # Initialize the GitHub API client
-    g = Github(GITHUB_TOKEN)
-
-    try:
-        # Get the repository
-        repo_name = f"{REPO_OWNER}/{REPO_NAME}"
-        repo = g.get_repo(repo_name)
-
-        # Check if an issue with the same title already exists
-        issues = repo.get_issues(state="open")
-        existing_issue = None
-
-        for issue in issues:
-            if issue.title == issue_title:
-                print(f"Issue already exists: {issue.html_url}")
-                existing_issue = issue
-                break
-
-        if not existing_issue and dangling_assets:
-            # Create a new issue if it does not exist
-            new_issue = repo.create_issue(
-                title=issue_title, body=dangling_assets_content
-            )
-            print(f"New issue created: {new_issue.html_url}")
-
-        if existing_issue and dangling_assets:
-            existing_issue.edit(body=dangling_assets_content)
-            print(f"Issue updated: {existing_issue.html_url}")
-        if existing_issue and not dangling_assets:
-            existing_issue.edit(state="closed")
-            print(f"Issue closed: {existing_issue.html_url}")
-
-        # for issue in issues:
-        #     if issue.title == issue_title:
-        #         print(f"Issue already exists: {issue.html_url}")
-        #         return issue
-
-        # # Create a new issue if it does not exist
-        # new_issue = repo.create_issue(title=issue_title, body=dangling_assets_content)
-        # print(f"New issue created: {new_issue.html_url}")
-        # return issue
-
-    except Exception as e:
-        print(f"Error: {e}")
-
-
-def detect_event_type() -> str:
-    event_name = os.getenv("GITHUB_EVENT_NAME")
-
-    if event_name == "pull_request":
-        head_ref = os.getenv("GITHUB_HEAD_REF", "unknown")
-        base_ref = os.getenv("GITHUB_BASE_REF", "unknown")
-        print(f"Triggered by a pull request from {head_ref} to {base_ref}.")
-        return "pull_request"
-    elif event_name == "push":
-        branch = os.getenv("GITHUB_REF", "unknown").replace("refs/heads/", "")
-        print(f"Triggered by a push to branch {branch}.")
-        return "push"
-    else:
-        print(f"Triggered by an unrecognized event: {event_name}")
-        return "other"
-
-
-def check_github_token_permissions() -> None:
-    """Check if the GITHUB_TOKEN has permissions to create pull requests and issues."""
-    url = f"{BASE_URL}/repos/{REPO_OWNER}/{REPO_NAME}"
-    response = requests.get(url, headers=HEADERS)
-
-    if response.status_code != 200:
-        print(f"Error checking repository access: {response.json()}")
-        print("Add MY_PAT_TOKEN as repository secret")
-        sys.exit(1)
-
-    repo_data = response.json()
-    print(repo_data.get("permissions", {}))
-
-    if not repo_data.get("permissions", {}).get("pull"):
-        print(
-            "GITHUB_TOKEN does not have permission to create pull requests. Add key from labot-repository-workflows.md as MY_PAT_TOKEN repository secret."
+        self.PROJECT_ROOT = Path.cwd()
+        self.ASSETS_DIR = Path("assets")
+        self.ASSET_IGNORE_FILE = (
+            self.PROJECT_ROOT / ".github/workflows/.asset_ignore.txt"
         )
-        sys.exit(1)
 
-    if not repo_data.get("permissions", {}).get("push"):
-        print(
-            "GITHUB_TOKEN does not have permission to create issues (push)). Add key from labot-repository-workflows.md as MY_PAT_TOKEN repository secret."
-        )
-        sys.exit(1)
+    def _load_ignored_assets(self) -> set:
+        if not self.ASSET_IGNORE_FILE.exists():
+            return set()
 
-    print("GITHUB_TOKEN has the required permissions.")
+        with open(self.ASSET_IGNORE_FILE, encoding="utf-8") as f:
+            ignored_paths = {line.strip() for line in f if line.strip()}
 
+        # Convert relative paths in the ignore file to absolute paths
+        ignored_assets = {
+            self.PROJECT_ROOT / Path(ignored).resolve() for ignored in ignored_paths
+        }
+        return ignored_assets
 
-def get_repo_tags(owner: str, repo_name: str) -> list:
-    """Fetch the tags of the repository."""
-    url = f"{BASE_URL}/repos/{owner}/{repo_name}/tags"
-    response = requests.get(url, headers=HEADERS)
+    def _find_linked_assets(self, markdown_dir: Path) -> set:
+        linked_assets = set()
 
-    if response.status_code != 200:
-        print(f"Error fetching tags: {response.json()}")
-        sys.exit(1)
+        # Walk through all markdown files
+        for root, _, files in os.walk(markdown_dir):
+            for file in files:
+                if file.endswith(".md"):
+                    filepath = Path(root) / file
+                    with open(filepath, encoding="utf-8") as f:
+                        content = f.read()
+                        # Find all asset links in the markdown file
+                        links = asset_link_pattern.findall(content)
+                        links.extend(img_src_pattern.findall(content))
+                        links.extend(a_href_pattern.findall(content))
+                        for link in links:
+                            # Convert to absolute path if necessary and normalize
+                            asset_path = (Path(root) / link).resolve()
+                            linked_assets.add(asset_path)
 
-    tags = response.json()
-    return [tag["name"] for tag in tags]
+        return linked_assets
 
+    def _find_all_assets(self) -> set:
+        all_assets = set()
 
-def get_repo_topics(owner: str, repo_name: str) -> list:
-    """Fetch the topics of the repository."""
-    url = f"{BASE_URL}/repos/{owner}/{repo_name}/topics"
-    response = requests.get(url, headers=HEADERS)
+        # Walk through all files in the assets directory
+        for root, _, files in os.walk(self.ASSETS_DIR):
+            for file in files:
+                asset_path = Path(root) / file
+                all_assets.add(asset_path.resolve())
 
-    if response.status_code != 200:
-        print(f"Error fetching topics: {response.json()}")
-        sys.exit(1)
+        return all_assets
 
-    topics = response.json().get("names", [])
-    return topics
+    def _find_dangling_assets(self) -> set:
+        linked_assets = self._find_linked_assets(Path("slides"))
+        linked_assets.update(self._find_linked_assets(Path("docs")))
+        all_assets = self._find_all_assets()
+        ignored_assets = self._load_ignored_assets()
+        dangling_assets = all_assets - linked_assets - ignored_assets
+        return dangling_assets
 
+    def _check_dangling_assets(self) -> None:
 
-def _update_labot_file() -> None:
-    # Define the file paths
-    # labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
+        dangling_assets = self._find_dangling_assets()
+        if not dangling_assets:
+            print("No dangling assets found.")
 
-    labot_local_file = Path(".github/workflows/labot.yml")
-    labot_package_data = pkgutil.get_data("labot", "data/labot.yml")
-    if not labot_package_data:
-        return
+        print(f"Dangling assets: {dangling_assets}")
 
-    # Function to compute file hash
-    def compute_file_hash(file_path: Path) -> str:
-        with open(file_path, "rb") as f:
-            return hashlib.sha256(f.read()).hexdigest()
+        # Initialize a string to store the output
+        dangling_assets_content = "## Dangling Assets:\n"
+        for asset in dangling_assets:
+            dangling_assets_content += f"- `{asset}`\n"
 
-    # Compare the local file content with package data
-    labot_package_hash = hashlib.sha256(labot_package_data).hexdigest()
-    labot_local_hash = compute_file_hash(labot_local_file)
-
-    if labot_local_hash != labot_package_hash:
-        print("Files differ. Replacing and committing changes.")
-
-        issue_title = "Suggestion: Update the YAML file"
-        issue_body = f"""It seems that the YAML file in the repository needs to be updated.
-Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/main/labot/data/labot.yml) and update it [here](https://github.com/{REPO_OWNER}/{REPO_NAME}/edit/main/.github/workflows/labot.yml)."""
-
-        # Initialize the GitHub API client
-        g = Github(GITHUB_TOKEN)
+        issue_title = "Assets report"
 
         try:
-            # Get the repository
-            repo_name = f"{REPO_OWNER}/{REPO_NAME}"
-            repo = g.get_repo(repo_name)
+            repo = self.github_repo.get_repo(self.GITHUB_REPOSITORY)
 
             # Check if an issue with the same title already exists
             issues = repo.get_issues(state="open")
+            existing_issue = None
+
             for issue in issues:
                 if issue.title == issue_title:
                     print(f"Issue already exists: {issue.html_url}")
-                    return issue
+                    existing_issue = issue
+                    break
 
-            # Create a new issue if it does not exist
-            new_issue = repo.create_issue(title=issue_title, body=issue_body)
-            print(f"New issue created: {new_issue.html_url}")
-            return new_issue
+            if not existing_issue and dangling_assets:
+                # Create a new issue if it does not exist
+                new_issue = repo.create_issue(
+                    title=issue_title, body=dangling_assets_content
+                )
+                print(f"New issue created: {new_issue.html_url}")
+
+            if existing_issue and dangling_assets:
+                existing_issue.edit(body=dangling_assets_content)
+                print(f"Issue updated: {existing_issue.html_url}")
+            if existing_issue and not dangling_assets:
+                existing_issue.edit(state="closed")
+                print(f"Issue closed: {existing_issue.html_url}")
+
+            # for issue in issues:
+            #     if issue.title == issue_title:
+            #         print(f"Issue already exists: {issue.html_url}")
+            #         return issue
+
+            # # Create a new issue if it does not exist
+            # new_issue = repo.create_issue(title=issue_title, body=dangling_assets_content)
+            # print(f"New issue created: {new_issue.html_url}")
+            # return issue
 
         except Exception as e:
             print(f"Error: {e}")
-            return None
 
-    else:
-        print("Labot workflow files are identical. No action taken.")
+    def _detect_event_type(self) -> str:
+        event_name = os.getenv("GITHUB_EVENT_NAME")
 
+        if event_name == "pull_request":
+            head_ref = os.getenv("GITHUB_HEAD_REF", "unknown")
+            base_ref = os.getenv("GITHUB_BASE_REF", "unknown")
+            print(f"Triggered by a pull request from {head_ref} to {base_ref}.")
+            return "pull_request"
+        elif event_name == "push":
+            branch = os.getenv("GITHUB_REF", "unknown").replace("refs/heads/", "")
+            print(f"Triggered by a push to branch {branch}.")
+            return "push"
+        else:
+            print(f"Triggered by an unrecognized event: {event_name}")
+            return "other"
 
-def has_changes_to_commit() -> bool:
-    """
-    Check if there are any changes in the repository, ignoring newline differences.
-    """
-    try:
-        # Run git diff with --ignore-space-at-eol to ignore newline changes
-        result = subprocess.run(
-            ["git", "diff", "--ignore-space-at-eol", "--exit-code"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        return result.returncode != 0  # Non-zero exit code means changes exist
-    except Exception as e:
-        print(f"Error checking repository changes: {e}")
-        return False
+    def _check_github_token_permissions(self) -> None:
+        """Check if the GITHUB_TOKEN has permissions to create pull requests and issues."""
+        url = f"{self.GH_API_BASE_URL}/repos/{self.GITHUB_REPOSITORY}"
+        response = requests.get(url, headers=self.HEADERS)
 
+        if response.status_code != 200:
+            print(f"Error checking repository access: {response.json()}")
+            print("Add MY_PAT_TOKEN as repository secret")
+            sys.exit(1)
 
-def _colrev_sync_references() -> None:
+        repo_data = response.json()
+        print(repo_data.get("permissions", {}))
 
-    # Run the colrev-sync command
-    try:
-        # Run the colrev-sync command and capture the output
-        result = subprocess.run(
-            ["colrev-sync"],
-            check=True,  # Raise an exception if the command fails
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,  # Ensure the output is captured as text (not bytes)
-        )
+        if not repo_data.get("permissions", {}).get("pull"):
+            print(
+                "GITHUB_TOKEN does not have permission to create pull requests. "
+                "Add key from labot-repository-workflows.md as MY_PAT_TOKEN repository secret."
+            )
+            sys.exit(1)
 
-        # Print the standard output and error (if any)
-        print("Output:\n", result.stdout)
-        if result.stderr:
-            print("Error:\n", result.stderr)
+        if not repo_data.get("permissions", {}).get("push"):
+            print(
+                "GITHUB_TOKEN does not have permission to create issues (push)). "
+                "Add key from labot-repository-workflows.md as MY_PAT_TOKEN repository secret."
+            )
+            sys.exit(1)
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error running colrev-sync: {e}")
-        print("Output:\n", e.stdout)
-        print("Error:\n", e.stderr)
+        print("GITHUB_TOKEN has the required permissions.")
 
-    repo = Repo(os.getcwd())
+    def _get_repo_tags(self) -> list:
+        """Fetch the tags of the repository."""
+        url = f"{self.GH_API_BASE_URL}/repos/{self.GITHUB_REPOSITORY}/tags"
+        response = requests.get(url, headers=self.HEADERS)
 
-    current_branch = repo.active_branch.name
+        if response.status_code != 200:
+            print(f"Error fetching tags: {response.json()}")
+            sys.exit(1)
 
-    # Check if there are any changes before creating the PR
-    if has_changes_to_commit():
-        # should be colrev-update-2024-12-17-12-00-00
-        new_branch = f"colrev-update-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-        # Get the current branch
-        if current_branch == "main":
-            if new_branch not in repo.heads:
-                # Create the new branch from the current commit
-                new_branch_ref = repo.create_head(new_branch, repo.head.commit)
-                new_branch_ref.checkout()
-                print(f"New branch '{new_branch}' created and checked out.")
-            else:
-                new_branch_ref = repo.heads[new_branch]
-                new_branch_ref.checkout()
-                print(f"Branch '{new_branch}' already exists. Checked out.")
+        tags = response.json()
+        return [tag["name"] for tag in tags]
 
-        # add all changes
-        repo.git.add("--all")
+    def _get_repo_topics(self) -> list:
+        """Fetch the topics of the repository."""
+        url = f"{self.GH_API_BASE_URL}/repos/{self.GITHUB_REPOSITORY}/topics"
+        response = requests.get(url, headers=self.HEADERS)
 
-        # Create a commit for the changes and check whether a commit was created
-        if not repo.index.commit("Sync changes using colrev-sync"):
-            print("No changes to commit.")
+        if response.status_code != 200:
+            print(f"Error fetching topics: {response.json()}")
+            sys.exit(1)
+
+        topics = response.json().get("names", [])
+        return topics
+
+    def _update_labot_file(self) -> None:
+        # Define the file paths
+        # labot_local_file = os.path.join(os.path.dirname(__file__), "labot.yml")
+
+        labot_local_file = Path(".github/workflows/labot.yml")
+        labot_package_data = pkgutil.get_data("labot", "data/labot.yml")
+        if not labot_package_data:
             return
 
-        origin = repo.remotes.origin
-        if current_branch == "main":
-            # Push the new branch to GitHub
-            origin.push(new_branch)
-            print(f"Branch '{new_branch}' pushed to GitHub.")
+        # Function to compute file hash
+        def compute_file_hash(file_path: Path) -> str:
+            with open(file_path, "rb") as f:
+                return hashlib.sha256(f.read()).hexdigest()
 
-            # Push the changes to the new branch again
-            origin.push(new_branch)
-            print(f"Changes pushed to {new_branch}.")
-            # Authenticate using a GitHub token
-            g = Github(GITHUB_TOKEN)
-            repo_name = f"{REPO_OWNER}/{REPO_NAME}"
-            repo_github = g.get_repo(repo_name)
+        # Compare the local file content with package data
+        labot_package_hash = hashlib.sha256(labot_package_data).hexdigest()
+        labot_local_hash = compute_file_hash(labot_local_file)
 
-            # Create a pull request
-            pr = repo_github.create_pull(
-                title="ColRev Sync",
-                body="This PR was created using the colrev-sync command.",
-                head=new_branch,
-                base="main",
+        if labot_local_hash != labot_package_hash:
+            print("Files differ. Replacing and committing changes.")
+
+            issue_title = "Suggestion: Update the YAML file"
+            issue_body = (
+                """It seems that the YAML file in the repository needs to be updated.
+Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/main/labot/data/labot.yml)"""
+                + """ and update it [here]"""
+                + f"""(https://github.com/{self.GITHUB_REPOSITORY}/edit/main/.github/workflows/labot.yml)."""
             )
-            print(f"Pull Request created: {pr.html_url}")
 
-            # switch to main
-            repo.heads.main.checkout()
+            try:
+                repo = self.github_repo.get_repo(self.GITHUB_REPOSITORY)
+
+                # Check if an issue with the same title already exists
+                issues = repo.get_issues(state="open")
+                for issue in issues:
+                    if issue.title == issue_title:
+                        print(f"Issue already exists: {issue.html_url}")
+                        return issue
+
+                # Create a new issue if it does not exist
+                new_issue = repo.create_issue(title=issue_title, body=issue_body)
+                print(f"New issue created: {new_issue.html_url}")
+                return new_issue
+
+            except Exception as e:
+                print(f"Error: {e}")
+                return None
+
         else:
-            origin.push(current_branch)
+            print("Labot workflow files are identical. No action taken.")
 
-    else:
-        print("No changes found in the branch. Skipping PR creation.")
-        return
-
-
-def parse_markdown_to_dict(file_path):
-    """
-    Parses a markdown file with a YAML header into a Python dictionary (OrderedDict).
-
-    Args:
-        file_path (str): The path to the markdown file.
-
-    Returns:
-        dict: The parsed YAML content as an OrderedDict.
-    """
-    with open(file_path, encoding="utf-8") as file:
-        content = file.read()
-
-    # Extract the YAML block (content between the "---")
-    yaml_content = content.strip().split("---")[1]
-
-    # Parse the YAML content into an OrderedDict to preserve the order
-    parsed_dict = yaml.safe_load(yaml_content)
-
-    # Ensure the result is an OrderedDict (if not already)
-    if isinstance(parsed_dict, dict):
-        parsed_dict = OrderedDict(parsed_dict)
-
-    return parsed_dict
-
-
-def _check_update_paper_md():
-
-    paper_md = Path("paper.md")
-    if not paper_md.exists():
-        print("No 'paper.md' file found in the repository.")
-        return
-
-    metadata = parse_markdown_to_dict(paper_md)
-    # print(metadata)
-    if "project" not in metadata:
-        metadata["project"] = {}
-    if "status" not in metadata["project"]:
-        metadata["project"]["status"] = "writing"
-    if "started" not in metadata["project"]:
-        metadata["project"]["started"] = datetime.now().strftime("%Y-%m-%d")
-    if "manuscriptrepository" in metadata["project"]:
-        if metadata["project"]["manuscriptrepository"].startswith(
-            "https://github.com/"
-        ):
-            metadata["project"]["manuscriptrepository"] = (
-                metadata["project"]["manuscriptrepository"].replace(
-                    "https://github.com/", "git@github.com:"
-                )
-                + ".git"
-            )
-    if "datarepository" in metadata["project"]:
-        if metadata["project"]["datarepository"].startswith("https://github.com/"):
-            metadata["project"]["datarepository"] = (
-                metadata["project"]["datarepository"].replace(
-                    "https://github.com/", "git@github.com:"
-                )
-                + ".git"
-            )
-
-    paper_md_content = paper_md.read_text(encoding="utf-8")
-    # remove yaml header (content after second "---")
-    paper_md_content = paper_md_content.split("---", 2)[2]
-    with open(paper_md, "w", encoding="utf-8") as file:
-        file.write(
-            f"---\n{yaml.dump(metadata, allow_unicode=True, default_flow_style=False)}---{paper_md_content}"
-        )
-
-    # If there are changes, create a branch, commit, push, and pull-request
-    repo = Repo(os.getcwd())
-    current_branch = repo.active_branch.name
-    if has_changes_to_commit():
-        new_branch = "update_paper_md"
-        # Get the current branch
-        if current_branch == "main":
-            if new_branch not in repo.heads:
-                # Create the new branch from the current commit
-                new_branch_ref = repo.create_head(new_branch, repo.head.commit)
-                new_branch_ref.checkout()
-                print(f"New branch '{new_branch}' created and checked out.")
-            else:
-                new_branch_ref = repo.heads[new_branch]
-                new_branch_ref.checkout()
-                print(f"Branch '{new_branch}' already exists. Checked out.")
-
-        # Add all changes
-        repo.git.add("--all")
-
-        # Create a commit for the changes
-        if not repo.index.commit("Update paper.md"):
-            print("No changes to commit.")
-            return
-
-        origin = repo.remotes.origin
-        if current_branch == "main":
-            # Push the new branch to GitHub
-            origin.push(new_branch)
-            print(f"Branch '{new_branch}' pushed to GitHub.")
-
-            # Create a pull request
-            g = Github(GITHUB_TOKEN)
-            repo_name = f"{REPO_OWNER}/{REPO_NAME}"
-            repo_github = g.get_repo(repo_name)
-
-            pr = repo_github.create_pull(
-                title="Update paper.md",
-                body="This PR was created by Labot.",
-                head=new_branch,
-                base="main",
-            )
-            print(f"Pull Request created: {pr.html_url}")
-
-            # Switch to main
-            repo.heads.main.checkout()
-        else:
-            origin.push(current_branch)
-
-    else:
-        print("No changes found in the branch. Skipping PR creation.")
-        return
-
-
-def run_research_repo_checks() -> None:
-    """Run checks specific to research repositories."""
-    global VALID
-    print("Running research repository checks...")
-
-    makefile_path = "Makefile"  # Adjust if the Makefile is in a subdirectory
-
-    # Check if Makefile exists
-    if not os.path.isfile(makefile_path):
-        print("No Makefile found in the repository.")
-        VALID = False
-    else:
-        # Check if 'make pdf' rule exists in the Makefile
-        with open(makefile_path) as makefile:
-            makefile_contents = makefile.read()
-            if "pdf" not in makefile_contents:
-                print("'make pdf' rule not found in Makefile.")
-                VALID = False
-
-    if not os.path.isfile("paper.md"):
-        print("No 'paper.md' file found in the repository.")
-        VALID = False
-
-    _check_update_paper_md()
-
-    _colrev_sync_references()
-
-
-def run_teaching_repo_checks() -> None:
-    """Run checks specific to teaching repositories."""
-    global VALID
-
-    # Require a reset_course.yml workflow
-
-    # workflows_url = f"{BASE_URL}/repos/{REPO_OWNER}/{REPO_NAME}/actions/workflows"
-    # response = requests.get(workflows_url, headers=HEADERS)
-
-    # if response.status_code != 200:
-    #     print(f"Error fetching workflows: {response.json()}")
-    #     VALID = False
-
-    # workflows = response.json().get("workflows", [])
-    # workflow_names = [workflow["name"] for workflow in workflows]
-
-    # # TBD: should this be an option of the manually-dispatched labot workflow?
-    # if ".github/workflows/reset_course.yml" not in workflow_names:
-    #     print("No 'reset_course.yml' workflow found.")
-    #     VALID = False
-
-
-def check_paper_files(paper_files: list, references: dict) -> None:
-    """Check the paper files."""
-    global VALID
-
-    def validate_structure(content: str, expected_title: str) -> bool:
-        """Validate the structure of a single paper file."""
-        # Define the expected structure template with placeholders
-        structure_template = f"# {expected_title}\n" "\n"
-        return content.strip().startswith(structure_template.strip())
-
-    errors = []
-
-    for paper_file in paper_files:
+    def _has_changes_to_commit(self) -> bool:
+        """
+        Check if there are any changes in the repository, ignoring newline differences.
+        """
         try:
-            with open("papers/" + paper_file) as file:
-                content = file.read()
-        except FileNotFoundError:
-            errors.append(f"File {paper_file} not found.")
-            continue
-
-        paper_id = paper_file.replace(".md", "").split("/")[
-            -1
-        ]  # Extract paper ID from the file name
-
-        if paper_id not in references:
-            errors.append(
-                f"Paper ID {paper_id} in {paper_file} is not in the references."
+            # Run git diff with --ignore-space-at-eol to ignore newline changes
+            result = subprocess.run(
+                ["git", "diff", "--ignore-space-at-eol", "--exit-code"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
             )
-            continue
+            return result.returncode != 0  # Non-zero exit code means changes exist
+        except Exception as e:
+            print(f"Error checking repository changes: {e}")
+            return False
 
-        expected_title = references[paper_id].get("title", "<Full title of the paper>")
+    def _colrev_sync_references(self) -> None:
 
-        if not validate_structure(content, expected_title):
-            errors.append(f"File {paper_file} does not match the expected structure.")
-
-    if errors:
-        for error in errors:
-            print(f"Error: {error}")
-        VALID = False
-    else:
-        print("All paper files are correctly structured.")
-
-
-def run_knowledge_repo_checks() -> None:
-    """Run checks specific to the knowledge repository."""
-    global VALID
-
-    references = colrev.loader.load_utils.load(
-        filename=Path("references.bib"),
-        unique_id_field="ID",
-    )
-
-    # check whether all files in the pdfs dir have *.pdf extension
-    pdfs_dir = "pdfs"
-    pdfs = os.listdir(pdfs_dir)
-    papers_dir = "papers"
-    concepts_dir = "concepts"
-    paper_files = os.listdir(papers_dir)
-
-    for pdf in pdfs:
-        if not pdf.endswith(".pdf"):
-            print(f"File '{pdf}' in 'pdfs' directory does not have a '.pdf' extension.")
-            VALID = False
-        # all pdfs must have a paper_file
-        if pdf.replace(".pdf", ".md") not in paper_files:
-            print(f"PDF file '{pdf}' does not have a corresponding paper file.")
-            VALID = False
-
-    # check if all files in the papers and concepts dirs have n *.md extension
-    concept_files = os.listdir(concepts_dir)
-    for paper in paper_files:
-        if not paper.endswith(".md"):
-            print(
-                f"File '{paper}' in 'papers' directory does not have a '.md' extension."
+        # Run the colrev-sync command
+        try:
+            # Run the colrev-sync command and capture the output
+            result = subprocess.run(
+                ["colrev-sync"],
+                check=True,  # Raise an exception if the command fails
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,  # Ensure the output is captured as text (not bytes)
             )
-            VALID = False
 
-    check_paper_files(paper_files, references)
+            # Print the standard output and error (if any)
+            print("Output:\n", result.stdout)
+            if result.stderr:
+                print("Error:\n", result.stderr)
 
-    for concept in concept_files:
-        if not concept.endswith(".md"):
-            print(
-                f"File '{concept}' in 'concepts' directory does not have a '.md' extension."
-            )
-            VALID = False
+        except subprocess.CalledProcessError as e:
+            print(f"Error running colrev-sync: {e}")
+            print("Output:\n", e.stdout)
+            print("Error:\n", e.stderr)
 
-    # check whether all papers are in the references.bib
-    for paper in paper_files:
-        if paper.replace(".md", "") not in references:
-            print(f"Paper '{paper}' is not listed in 'references.bib'.")
-            VALID = False
+        current_branch = self.local_repo.active_branch.name
 
-    # check whether all papers have a PDF in the pdfs dir
-    for paper in paper_files:
-        pdf_file = paper.replace(".md", ".pdf")
-        if pdf_file not in pdfs:
-            print(
-                f"PDF file '{pdf_file}' for paper '{paper}' not found in 'pdfs' directory."
-            )
-            VALID = False
-        # TODO : validate asset locations and links (broken links)
+        # Check if there are any changes before creating the PR
+        if self._has_changes_to_commit():
+            # should be colrev-update-2024-12-17-12-00-00
+            new_branch = f"colrev-update-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+            # Get the current branch
+            if current_branch == "main":
+                if new_branch not in self.local_repo.heads:
+                    # Create the new branch from the current commit
+                    new_branch_ref = self.local_repo.create_head(
+                        new_branch, self.local_repo.head.commit
+                    )
+                    new_branch_ref.checkout()
+                    print(f"New branch '{new_branch}' created and checked out.")
+                else:
+                    new_branch_ref = self.local_repo.heads[new_branch]
+                    new_branch_ref.checkout()
+                    print(f"Branch '{new_branch}' already exists. Checked out.")
 
-    _colrev_sync_references()
+            # add all changes
+            self.local_repo.git.add("--all")
 
+            # Create a commit for the changes and check whether a commit was created
+            if not self.local_repo.index.commit("Sync changes using colrev-sync"):
+                print("No changes to commit.")
+                return
 
-def get_pull_request_number() -> int:
-    """
-    Retrieve the pull request number from the GitHub Actions environment.
+            origin = self.local_repo.remotes.origin
+            if current_branch == "main":
+                # Push the new branch to GitHub
+                origin.push(new_branch)
+                print(f"Branch '{new_branch}' pushed to GitHub.")
 
-    Returns:
-        int: The pull request number, or None if not a pull request event.
-    """
-    # Path to the event payload file
-    event_path = os.getenv("GITHUB_EVENT_PATH")
+                # Push the changes to the new branch again
+                origin.push(new_branch)
+                print(f"Changes pushed to {new_branch}.")
 
-    if not event_path:
-        raise OSError("GITHUB_EVENT_PATH environment variable is not set.")
+                # Create a pull request
+                pr = self.github_repo.create_pull(
+                    title="ColRev Sync",
+                    body="This PR was created using the colrev-sync command.",
+                    head=new_branch,
+                    base="main",
+                )
+                print(f"Pull Request created: {pr.html_url}")
 
-    try:
-        # Load the event payload from the JSON file
-        with open(event_path) as event_file:
-            event_data = json.load(event_file)
+                # switch to main
+                self.local_repo.heads.main.checkout()
+            else:
+                origin.push(current_branch)
 
-        # Extract the pull request number if available
-        if "pull_request" in event_data:
-            pr_number = event_data["pull_request"]["number"]
-            return pr_number
         else:
-            print("This event is not a pull request.")
-            return -1
-    except Exception as e:
-        raise RuntimeError(f"Failed to parse the event payload: {e}")
+            print("No changes found in the branch. Skipping PR creation.")
+            return
 
+    def _parse_markdown_to_dict(self, file_path: Path) -> dict:
+        """
+        Parses a markdown file with a YAML header into a Python dictionary (OrderedDict).
 
-def get_pull_request_changes(pr_number: int) -> dict:
-    """
-    Fetch the changes introduced by the commits associated with a pull request.
+        Args:
+            file_path (str): The path to the markdown file.
 
-    Args:
-        pr_number (int): The number of the pull request.
+        Returns:
+            dict: The parsed YAML content as an OrderedDict.
+        """
+        with open(file_path, encoding="utf-8") as file:
+            content = file.read()
 
-    Returns:
-        dict: A dictionary with filenames as keys and the type of change (added, modified, removed) as values,
-              or an error message if the request fails.
-    """
-    # Retrieve the GitHub token and repository information
-    github_token = os.getenv("GITHUB_TOKEN")
-    github_repo = os.getenv("GITHUB_REPOSITORY")  # e.g., "owner/repo"
+        # Extract the YAML block (content between the "---")
+        yaml_content = content.strip().split("---")[1]
 
-    if not github_token or not github_repo:
-        raise OSError(
-            "GITHUB_TOKEN or GITHUB_REPOSITORY environment variable is not set."
+        # Parse the YAML content into an OrderedDict to preserve the order
+        parsed_dict = yaml.safe_load(yaml_content)
+
+        # Ensure the result is an OrderedDict (if not already)
+        if isinstance(parsed_dict, dict):
+            parsed_dict = OrderedDict(parsed_dict)
+
+        return parsed_dict
+
+    def _check_update_paper_md(self) -> None:
+
+        paper_md = Path("paper.md")
+        if not paper_md.exists():
+            print("No 'paper.md' file found in the repository.")
+            return
+
+        metadata = self._parse_markdown_to_dict(paper_md)
+        # print(metadata)
+        if "project" not in metadata:
+            metadata["project"] = {}
+        if "status" not in metadata["project"]:
+            metadata["project"]["status"] = "writing"
+        if "started" not in metadata["project"]:
+            metadata["project"]["started"] = datetime.now().strftime("%Y-%m-%d")
+        if "manuscriptrepository" in metadata["project"]:
+            if metadata["project"]["manuscriptrepository"].startswith(
+                "https://github.com/"
+            ):
+                metadata["project"]["manuscriptrepository"] = (
+                    metadata["project"]["manuscriptrepository"].replace(
+                        "https://github.com/", "git@github.com:"
+                    )
+                    + ".git"
+                )
+        if "datarepository" in metadata["project"]:
+            if metadata["project"]["datarepository"].startswith("https://github.com/"):
+                metadata["project"]["datarepository"] = (
+                    metadata["project"]["datarepository"].replace(
+                        "https://github.com/", "git@github.com:"
+                    )
+                    + ".git"
+                )
+
+        paper_md_content = paper_md.read_text(encoding="utf-8")
+        # remove yaml header (content after second "---")
+        paper_md_content = paper_md_content.split("---", 2)[2]
+        with open(paper_md, "w", encoding="utf-8") as file:
+            # Write the modified content back with the YAML header serialized using custom representer
+            file.write(
+                f"---\n{yaml.dump(metadata, allow_unicode=True, default_flow_style=False)}"
+                f"---{paper_md_content}"
+            )
+
+        # If there are changes, create a branch, commit, push, and pull-request
+
+        current_branch = self.local_repo.active_branch.name
+        if self._has_changes_to_commit():
+            new_branch = "update_paper_md"
+            # Get the current branch
+            if current_branch == "main":
+                if new_branch not in self.local_repo.heads:
+                    # Create the new branch from the current commit
+                    new_branch_ref = self.local_repo.create_head(
+                        new_branch, self.local_repo.head.commit
+                    )
+                    new_branch_ref.checkout()
+                    print(f"New branch '{new_branch}' created and checked out.")
+                else:
+                    new_branch_ref = self.local_repo.heads[new_branch]
+                    new_branch_ref.checkout()
+                    print(f"Branch '{new_branch}' already exists. Checked out.")
+
+            # Add all changes
+            self.local_repo.git.add("--all")
+
+            # Create a commit for the changes
+            if not self.local_repo.index.commit("Update paper.md"):
+                print("No changes to commit.")
+                return
+
+            origin = self.local_repo.remotes.origin
+            if current_branch == "main":
+                # Push the new branch to GitHub
+                origin.push(new_branch)
+                print(f"Branch '{new_branch}' pushed to GitHub.")
+
+                pr = self.github_repo.create_pull(
+                    title="Update paper.md",
+                    body="This PR was created by Labot.",
+                    head=new_branch,
+                    base="main",
+                )
+                print(f"Pull Request created: {pr.html_url}")
+
+                # Switch to main
+                self.local_repo.heads.main.checkout()
+            else:
+                origin.push(current_branch)
+
+        else:
+            print("No changes found in the branch. Skipping PR creation.")
+            return
+
+    def _run_research_repo_checks(self) -> None:
+        """Run checks specific to research repositories."""
+        print("Running research repository checks...")
+
+        makefile_path = "Makefile"  # Adjust if the Makefile is in a subdirectory
+
+        # Check if Makefile exists
+        if not os.path.isfile(makefile_path):
+            print("No Makefile found in the repository.")
+            self.VALID = False
+        else:
+            # Check if 'make pdf' rule exists in the Makefile
+            with open(makefile_path) as makefile:
+                makefile_contents = makefile.read()
+                if "pdf" not in makefile_contents:
+                    print("'make pdf' rule not found in Makefile.")
+                    self.VALID = False
+
+        if not os.path.isfile("paper.md"):
+            print("No 'paper.md' file found in the repository.")
+            self.VALID = False
+
+        self._check_update_paper_md()
+
+        self._colrev_sync_references()
+
+    def _run_teaching_repo_checks(self) -> None:
+        """Run checks specific to teaching repositories."""
+
+        # Require a reset_course.yml workflow
+
+        # workflows_url = f"{GH_API_BASE_URL}/repos/{self.GITHUB_REPOSITORY}/actions/workflows"
+        # response = requests.get(workflows_url, headers=HEADERS)
+
+        # if response.status_code != 200:
+        #     print(f"Error fetching workflows: {response.json()}")
+        #     self.VALID = False
+
+        # workflows = response.json().get("workflows", [])
+        # workflow_names = [workflow["name"] for workflow in workflows]
+
+        # # TBD: should this be an option of the manually-dispatched labot workflow?
+        # if ".github/workflows/reset_course.yml" not in workflow_names:
+        #     print("No 'reset_course.yml' workflow found.")
+        #     self.VALID = False
+
+    def _check_paper_files(self, paper_files: list, references: dict) -> None:
+        """Check the paper files."""
+
+        def validate_structure(content: str, expected_title: str) -> bool:
+            """self.validate the structure of a single paper file."""
+            # Define the expected structure template with placeholders
+            structure_template = f"# {expected_title}\n" "\n"
+            return content.strip().startswith(structure_template.strip())
+
+        errors = []
+
+        for paper_file in paper_files:
+            try:
+                with open("papers/" + paper_file) as file:
+                    content = file.read()
+            except FileNotFoundError:
+                errors.append(f"File {paper_file} not found.")
+                continue
+
+            paper_id = paper_file.replace(".md", "").split("/")[
+                -1
+            ]  # Extract paper ID from the file name
+
+            if paper_id not in references:
+                errors.append(
+                    f"Paper ID {paper_id} in {paper_file} is not in the references."
+                )
+                continue
+
+            expected_title = references[paper_id].get(
+                "title", "<Full title of the paper>"
+            )
+
+            if not validate_structure(content, expected_title):
+                errors.append(
+                    f"File {paper_file} does not match the expected structure."
+                )
+
+        if errors:
+            for error in errors:
+                print(f"Error: {error}")
+            self.VALID = False
+        else:
+            print("All paper files are correctly structured.")
+
+    def _run_knowledge_repo_checks(self) -> None:
+        """Run checks specific to the knowledge repository."""
+
+        references = colrev.loader.load_utils.load(
+            filename=Path("references.bib"),
+            unique_id_field="ID",
         )
 
-    # Construct the API URL for the pull request files
-    api_url = f"https://api.github.com/repos/{github_repo}/pulls/{pr_number}/files"
+        # check whether all files in the pdfs dir have *.pdf extension
+        pdfs_dir = "pdfs"
+        pdfs = os.listdir(pdfs_dir)
+        papers_dir = "papers"
+        concepts_dir = "concepts"
+        paper_files = os.listdir(papers_dir)
 
-    # Set up headers for the API request
-    headers = {
-        "Authorization": f"Bearer {github_token}",
-        "Accept": "application/vnd.github.v3+json",
-    }
+        for pdf in pdfs:
+            if not pdf.endswith(".pdf"):
+                print(
+                    f"File '{pdf}' in 'pdfs' directory does not have a '.pdf' extension."
+                )
+                self.VALID = False
+            # all pdfs must have a paper_file
+            if pdf.replace(".pdf", ".md") not in paper_files:
+                print(f"PDF file '{pdf}' does not have a corresponding paper file.")
+                self.VALID = False
 
-    # Make the API request to fetch the changes
-    response = requests.get(api_url, headers=headers)
+        # check if all files in the papers and concepts dirs have n *.md extension
+        concept_files = os.listdir(concepts_dir)
+        for paper in paper_files:
+            if not paper.endswith(".md"):
+                print(
+                    f"File '{paper}' in 'papers' directory does not have a '.md' extension."
+                )
+                self.VALID = False
 
-    if response.status_code != 200:
-        print(
-            f"Failed to fetch changes. Status code: {response.status_code}, Response: {response.text}"
+        self._check_paper_files(paper_files, references)
+
+        for concept in concept_files:
+            if not concept.endswith(".md"):
+                print(
+                    f"File '{concept}' in 'concepts' directory does not have a '.md' extension."
+                )
+                self.VALID = False
+
+        # check whether all papers are in the references.bib
+        for paper in paper_files:
+            if paper.replace(".md", "") not in references:
+                print(f"Paper '{paper}' is not listed in 'references.bib'.")
+                self.VALID = False
+
+        # check whether all papers have a PDF in the pdfs dir
+        for paper in paper_files:
+            pdf_file = paper.replace(".md", ".pdf")
+            if pdf_file not in pdfs:
+                print(
+                    f"PDF file '{pdf_file}' for paper '{paper}' not found in 'pdfs' directory."
+                )
+                self.VALID = False
+            # TODO : self.VALIDate asset locations and links (broken links)
+
+        self._colrev_sync_references()
+
+    def _get_pull_request_number(self) -> int:
+        """
+        Retrieve the pull request number from the GitHub Actions environment.
+
+        Returns:
+            int: The pull request number, or None if not a pull request event.
+        """
+        # Path to the event payload file
+        event_path = os.getenv("GITHUB_EVENT_PATH")
+
+        if not event_path:
+            raise OSError("GITHUB_EVENT_PATH environment variable is not set.")
+
+        try:
+            # Load the event payload from the JSON file
+            with open(event_path) as event_file:
+                event_data = json.load(event_file)
+
+            # Extract the pull request number if available
+            if "pull_request" in event_data:
+                pr_number = event_data["pull_request"]["number"]
+                return pr_number
+            else:
+                print("This event is not a pull request.")
+                return -1
+        except Exception as e:
+            raise RuntimeError(f"Failed to parse the event payload: {e}")
+
+    def _get_pull_request_changes(self, pr_number: int) -> dict:
+        """
+        Fetch the changes introduced by the commits associated with a pull request.
+
+        Args:
+            pr_number (int): The number of the pull request.
+
+        Returns:
+            dict: A dictionary with filenames as keys and the type of change
+                (added, modified, removed) as values,
+                or an error message if the request fails.
+        """
+
+        if not self.GITHUB_TOKEN or not self.GITHUB_REPOSITORY:
+            raise OSError(
+                "GITHUB_TOKEN or GITHUB_REPOSITORY environment variable is not set."
+            )
+
+        # Construct the API URL for the pull request files
+        api_url = f"https://api.github.com/repos/{self.GITHUB_REPOSITORY}/pulls/{pr_number}/files"
+
+        # Set up headers for the API request
+        headers = {
+            "Authorization": f"Bearer {self.GITHUB_TOKEN}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+
+        # Make the API request to fetch the changes
+        response = requests.get(api_url, headers=headers)
+
+        if response.status_code != 200:
+            print(
+                f"Failed to fetch changes. Status code: {response.status_code}, Response: {response.text}"
+            )
+            raise RuntimeError("Failed to fetch changes.")
+
+        # Parse the JSON response and extract file patches
+        files = response.json()
+        changes = {
+            file["filename"]: file.get(
+                "patch", "No patch available (binary or large file)"
+            )
+            for file in files
+        }
+        return changes
+
+    def _evaluate_changes_with_openai(self, changes: dict) -> str:
+        """
+        Use OpenAI's GPT to evaluate if the changes align with defined values.
+
+        Args:
+            changes (str): A string describing the changes to evaluate.
+
+        Returns:
+            str: The evaluation provided by OpenAI.
+        """
+
+        if not self.OPENAI_KEY:
+            print("OPENAI_KEY environment variable is not set.")
+            return ""
+
+        # Define the values for alignment
+        values = """
+        🚀 Impact in research, teaching, and practice
+        We challenge ourselves every day to make significant contributions to research on digital work,
+        inspiring students in different teaching formats,
+        and facilitating the practical application of our work.
+
+        🛠️ Rigor, reliability, and reproducibility
+        We value rigorous methods that are based on evidence and yield reproducible results.
+        To this end, we select reliable tools and standard operating principles.
+
+        ♻️ Continuous improvement, openness, sustainability
+        We aim to make our work processes, continuous improvement efforts, and outcomes openly accessible.
+        In particular, we prefer open-source over proprietary technology.
+
+        🙏 Participation, support, and diversity
+        We build a culture of support, encouraging the participation of different stakeholders,
+        including current and former team members, students, and colleagues. We make diversity our strength.
+
+        🧑‍🎓️ Learning
+        We believe in continuous growth, learning, and curating helpful resources.
+        """
+
+        # Construct the prompt for OpenAI
+        prompt = f"""
+        You are an expert reviewer tasked with evaluating changes against the following values:
+
+        {values}
+
+        Please review the following changes and determine if they align with these values.
+        Provide specific reasoning for your assessment:
+
+        Changes:
+        {changes}
+        """
+
+        # Call the OpenAI API
+        try:
+            client = OpenAI(api_key=self.OPENAI_KEY)
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an expert reviewer of technical changes.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                model="gpt-4",
+            )
+            return chat_completion.choices[0].message.content.strip()
+        except Exception as e:
+            return f"An error occurred while communicating with OpenAI: {e}"
+
+    def _add_comment_to_pull_request(self, pr_number: int, comment_body: str) -> str:
+        """
+        Add a comment to a pull request on GitHub.
+
+        Args:
+            pr_number (int): The number of the pull request.
+            comment_body (str): The body of the comment to add.
+
+        Returns:
+            str: A message indicating success or failure.
+        """
+        # Retrieve the GitHub token and repository information
+        github_token = os.getenv("GITHUB_TOKEN")
+        github_repo = os.getenv("GITHUB_REPOSITORY")  # e.g., "owner/repo"
+
+        if not github_token or not github_repo:
+            raise OSError(
+                "GITHUB_TOKEN or GITHUB_REPOSITORY environment variable is not set."
+            )
+
+        # Construct the API URL for pull request comments
+        api_url = (
+            f"https://api.github.com/repos/{github_repo}/issues/{pr_number}/comments"
         )
-        raise RuntimeError("Failed to fetch changes.")
 
-    # Parse the JSON response and extract file patches
-    files = response.json()
-    changes = {
-        file["filename"]: file.get("patch", "No patch available (binary or large file)")
-        for file in files
-    }
-    return changes
+        # Set up headers for the API request
+        headers = {
+            "Authorization": f"Bearer {github_token}",
+            "Accept": "application/vnd.github.v3+json",
+        }
 
+        # Construct the payload for the comment
+        data = {"body": comment_body}
 
-def evaluate_changes_with_openai(changes: dict) -> str:
-    """
-    Use OpenAI's GPT to evaluate if the changes align with defined values.
+        # Make the API request to post the comment
+        response = requests.post(api_url, headers=headers, json=data)
 
-    Args:
-        changes (str): A string describing the changes to evaluate.
+        if response.status_code == 201:
+            return "Comment successfully added to the pull request."
+        else:
+            return f"Failed to add comment. Status code: {response.status_code}, Response: {response.text}"
 
-    Returns:
-        str: The evaluation provided by OpenAI.
-    """
-    # Retrieve the OpenAI API key from the environment
-    api_key = os.getenv("OPENAI_KEY")
-    if not api_key:
-        print("OPENAI_KEY environment variable is not set.")
-        return ""
+    def _run_pull_request_checks(self) -> None:
+        pr_number = self._get_pull_request_number()
+        if pr_number < 0:
+            return
+        changes = self._get_pull_request_changes(pr_number)
+        print(f"Changes in pull request {pr_number}: {changes}")
+        response = self._evaluate_changes_with_openai(changes)
+        if response:
+            self._add_comment_to_pull_request(pr_number, response)
 
-    # Define the values for alignment
-    values = """
-    🚀 Impact in research, teaching, and practice
-    We challenge ourselves every day to make significant contributions to research on digital work,
-    inspiring students in different teaching formats, and facilitating the application of our work in practice.
+    def _read_availability_md(self, file_path: str) -> str:
+        """Reads the Mermaid chart from the markdown file."""
+        with open(file_path) as file:
+            content = file.read()
+        return content
 
-    🛠️ Rigor, reliability, and reproducibility
-    We value rigorous methods that are based on evidence and yield reproducible results.
-    To this end, we select reliable tools and standard operating principles.
+    def _parse_mermaid_chart(self, content: str) -> tuple:
+        """Parses x-axis, bar, and line data from the Mermaid chart."""
+        x_axis_match = re.search(r"x-axis \[([^\]]+)\]", content)
+        bar_match = re.search(r"bar \[([^\]]+)\]", content)
+        line_match = re.search(r"line \[([^\]]+)\]", content)
 
-    ♻️ Continuous improvement, openness, sustainability
-    We aim to make our work processes, continuous improvement efforts, and outcomes openly accessible.
-    In particular, we prefer open-source over proprietary technology.
+        if not x_axis_match:
+            raise ValueError(f"No match found for x-axis in content: {content}")
+        if not bar_match:
+            raise ValueError(f"No match found for bar in content: {content}")
+        if not line_match:
+            raise ValueError(f"No match found for line in content: {content}")
 
-    🙏 Participation, support, and diversity
-    We build a culture of support, encouraging the participation of different stakeholders,
-    including current and former team members, students, and colleagues. We make diversity our strength.
+        x_axis = x_axis_match.group(1).split(", ")
+        bar_data = list(map(int, bar_match.group(1).split(",")))
+        line_data = list(map(int, line_match.group(1).split(",")))
 
-    🧑‍🎓️ Learning
-    We believe in continuous growth, setting aside time to learn on a regular basis, and curating helpful resources.
-    """
+        return x_axis, bar_data, line_data
 
-    # Construct the prompt for OpenAI
-    prompt = f"""
-    You are an expert reviewer tasked with evaluating changes against the following values:
+    def _update_mermaid_chart(
+        self, x_axis: list, bar_data: list, line_data: list, currently: int
+    ) -> str:
+        """Updates the Mermaid chart data."""
+        # Remove the first data point
+        x_axis.pop(0)
+        bar_data.pop(0)
+        line_data.pop(0)
 
-    {values}
+        # Add the current month and data
+        current_month = datetime.now().strftime("%Y-%m")
+        x_axis.append(current_month)
+        bar_data.append(currently)
+        line_data.append(8)  # Fixed capacity
 
-    Please review the following changes and determine if they align with these values. Provide specific reasoning for your assessment:
+        # Regenerate the chart
+        updated_chart = f"""{'{: .text-center}'}
+    ```mermaid
+    ---
+    config:
+        xyChart:
+            width: 900
+            height: 300
+    ---
+    xychart-beta
+        x-axis [{', '.join(x_axis)}]
+        y-axis "Theses (current vs capacity)" 0 --> {max(max(bar_data), max(line_data))}
+        bar [{', '.join(map(str, bar_data))}]
+        line [{', '.join(map(str, line_data))}]
+    ```"""
+        return updated_chart
 
-    Changes:
-    {changes}
-    """
+    def _write_availability_md(self, file_path: str, content: str) -> None:
+        """Writes the updated Mermaid chart back to the markdown file."""
+        with open(file_path, "w") as file:
+            file.write(content)
+        # create and push a commit using git.Repo()
 
-    # Call the OpenAI API
-    try:
-        client = OpenAI(api_key=api_key)
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an expert reviewer of technical changes.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            model="gpt-4",
+        self.local_repo.git.add(file_path)
+        self.local_repo.index.commit("Update availability chart")
+        origin = self.local_repo.remotes.origin
+        origin.push("main")
+
+    def _generate_mermaid_chart(self, theses: list) -> None:
+
+        file_path = "_includes/availability.md"
+        currently = sum(1 for thesis in theses if thesis.status != "archived")
+        content = self._read_availability_md(file_path)
+        current_month = datetime.now().strftime("%Y-%m")
+        if current_month in content:
+            return
+
+        x_axis, bar_data, line_data = self._parse_mermaid_chart(content)
+
+        updated_chart = self._update_mermaid_chart(
+            x_axis, bar_data, line_data, currently
         )
-        return chat_completion.choices[0].message.content.strip()
-    except Exception as e:
-        return f"An error occurred while communicating with OpenAI: {e}"
+        self._write_availability_md(file_path, updated_chart)
 
+    def _run_theses_checks(self) -> None:
 
-def add_comment_to_pull_request(pr_number: int, comment_body: str) -> str:
-    """
-    Add a comment to a pull request on GitHub.
+        current_dir = os.getcwd()
+        os.chdir("..")
+        repo_path = "theses-confidential"
+        if not os.path.exists(repo_path):
+            os.system(
+                f"git clone https://{self.GITHUB_TOKEN}@github.com/digital-work-lab/theses-confidential.git"
+            )
+        os.chdir(repo_path)
+        theses_path = Path.cwd() / "theses"
+        theses = labot.thesis.load_theses(theses_path=theses_path)
+        os.chdir(current_dir)
+        self._generate_mermaid_chart(theses)
 
-    Args:
-        pr_number (int): The number of the pull request.
-        comment_body (str): The body of the comment to add.
+    def main(self) -> None:
+        """Main function."""
+        self._check_github_token_permissions()
 
-    Returns:
-        str: A message indicating success or failure.
-    """
-    # Retrieve the GitHub token and repository information
-    github_token = os.getenv("GITHUB_TOKEN")
-    github_repo = os.getenv("GITHUB_REPOSITORY")  # e.g., "owner/repo"
+        # TODO : different functions for event-types? e.g.,
+        """
+        def issue_comment():
 
-    if not github_token or not github_repo:
-        raise OSError(
-            "GITHUB_TOKEN or GITHUB_REPOSITORY environment variable is not set."
-        )
+        if thesis_repo():
+            thesis_repo_issue_comment()
+        if paper_repo():
+            ...
 
-    # Construct the API URL for pull request comments
-    api_url = f"https://api.github.com/repos/{github_repo}/issues/{pr_number}/comments"
+    def thesis_repo_issue_comment():
 
-    # Set up headers for the API request
-    headers = {
-        "Authorization": f"Bearer {github_token}",
-        "Accept": "application/vnd.github.v3+json",
-    }
+        if "[registration]" in title:
+            registration_issue_comment()
+            """
 
-    # Construct the payload for the comment
-    data = {"body": comment_body}
+        # TODO : run "tasks" checks (for all md-files) and execute (+combine with a daily run of the workflow)
 
-    # Make the API request to post the comment
-    response = requests.post(api_url, headers=headers, json=data)
+        # TODO : generally lint for "SS\d{2,4}"
 
-    if response.status_code == 201:
-        return "Comment successfully added to the pull request."
-    else:
-        return f"Failed to add comment. Status code: {response.status_code}, Response: {response.text}"
+        tags = self._get_repo_tags()
+        print(f"tags: {tags}")
+        topics = self._get_repo_topics()
 
+        print(f"Repository '{self.REPO_NAME}' topics: {topics}")
 
-def run_pull_request_checks() -> None:
-    pr_number = get_pull_request_number()
-    if pr_number < 0:
-        return
-    changes = get_pull_request_changes(pr_number)
-    print(f"Changes in pull request {pr_number}: {changes}")
-    response = evaluate_changes_with_openai(changes)
-    if response:
-        add_comment_to_pull_request(pr_number, response)
+        if "research" in topics and self.REPO_NAME not in ["work_hub"]:
+            self._run_research_repo_checks()
+        if "teaching-materials" in topics:
+            self._run_teaching_repo_checks()
 
+            # TODO : also for other repos?
+            self._check_dangling_assets()
 
-def read_availability_md(file_path: str) -> str:
-    """Reads the Mermaid chart from the markdown file."""
-    with open(file_path) as file:
-        content = file.read()
-    return content
+        if self.REPO_NAME in ["work_hub"]:
+            self._run_knowledge_repo_checks()
+        if self.REPO_NAME == "theses":
+            self._run_theses_checks()
 
+        self._update_labot_file()
 
-def parse_mermaid_chart(content: str) -> tuple:
-    """Parses x-axis, bar, and line data from the Mermaid chart."""
-    x_axis = re.search(r"x-axis \[([^\]]+)\]", content).group(1).split(", ")
-    bar_data = list(
-        map(int, re.search(r"bar \[([^\]]+)\]", content).group(1).split(","))
-    )
-    line_data = list(
-        map(int, re.search(r"line \[([^\]]+)\]", content).group(1).split(","))
-    )
-    return x_axis, bar_data, line_data
+        if self._detect_event_type() == "pull_request":
+            self._run_pull_request_checks()
 
-
-def update_mermaid_chart(
-    x_axis: list, bar_data: list, line_data: list, currently: int
-) -> str:
-    """Updates the Mermaid chart data."""
-    # Remove the first data point
-    x_axis.pop(0)
-    bar_data.pop(0)
-    line_data.pop(0)
-
-    # Add the current month and data
-    current_month = datetime.now().strftime("%Y-%m")
-    x_axis.append(current_month)
-    bar_data.append(currently)
-    line_data.append(8)  # Fixed capacity
-
-    # Regenerate the chart
-    updated_chart = f"""{'{: .text-center}'}
-```mermaid
----
-config:
-    xyChart:
-        width: 900
-        height: 300
----
-xychart-beta
-    x-axis [{', '.join(x_axis)}]
-    y-axis "Theses (current vs capacity)" 0 --> {max(max(bar_data), max(line_data))}
-    bar [{', '.join(map(str, bar_data))}]
-    line [{', '.join(map(str, line_data))}]
-```"""
-    return updated_chart
-
-
-def write_availability_md(file_path: str, content: str) -> None:
-    """Writes the updated Mermaid chart back to the markdown file."""
-    with open(file_path, "w") as file:
-        file.write(content)
-    # create and push a commit using git.Repo()
-    repo = Repo(os.getcwd())
-    repo.git.add(file_path)
-    repo.index.commit("Update availability chart")
-    origin = repo.remotes.origin
-    origin.push("main")
-
-
-def generate_mermaid_chart(theses: list) -> None:
-
-    file_path = "_includes/availability.md"
-    currently = sum(1 for thesis in theses if thesis.status != "archived")
-    content = read_availability_md(file_path)
-    current_month = datetime.now().strftime("%Y-%m")
-    if current_month in content:
-        return
-
-    x_axis, bar_data, line_data = parse_mermaid_chart(content)
-
-    updated_chart = update_mermaid_chart(x_axis, bar_data, line_data, currently)
-    write_availability_md(file_path, updated_chart)
-
-
-def run_theses_checks() -> None:
-
-    current_dir = os.getcwd()
-    os.chdir("..")
-    repo_path = "theses-confidential"
-    if not os.path.exists(repo_path):
-        os.system(
-            f"git clone https://{GITHUB_TOKEN}@github.com/digital-work-lab/theses-confidential.git"
-        )
-    os.chdir(repo_path)
-    theses_path = Path.cwd() / "theses"
-    theses = labot.thesis.load_theses(theses_path=theses_path)
-    os.chdir(current_dir)
-    generate_mermaid_chart(theses)
-
-
-def main() -> None:
-    """Main function."""
-    check_github_token_permissions()
-
-    tags = get_repo_tags(REPO_OWNER, REPO_NAME)
-    print(f"tags: {tags}")
-    topics = get_repo_topics(REPO_OWNER, REPO_NAME)
-
-    print(f"Repository '{REPO_NAME}' topics: {topics}")
-
-    if "research" in topics and REPO_NAME not in ["work_hub"]:
-        run_research_repo_checks()
-    if "teaching-materials" in topics:
-        run_teaching_repo_checks()
-
-        # TODO : also for other repos?
-        check_dangling_assets()
-
-    if REPO_NAME in ["work_hub"]:
-        run_knowledge_repo_checks()
-    if REPO_NAME == "theses":
-        run_theses_checks()
-
-    _update_labot_file()
-
-    if detect_event_type() == "pull_request":
-        run_pull_request_checks()
-
-    if VALID:
-        sys.exit(0)
-    else:
-        sys.exit(1)
+        if self.VALID:
+            sys.exit(0)
+        else:
+            sys.exit(1)
 
 
 if __name__ == "__main__":
-    main()
+    repo_instance = Repository()
+    repo_instance.main()
