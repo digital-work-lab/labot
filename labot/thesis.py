@@ -8,7 +8,7 @@ from pathlib import Path
 
 import inquirer
 import yamale
-from frontmatter import Frontmatter
+import yaml
 from mailmerge import MailMerge
 
 # flake8: noqa: E501
@@ -152,10 +152,20 @@ Overall, I therefore recommend a grade of XXXXX for {thesis.formatted_student()}
 
 
 def generate_review() -> None:
-    data = Frontmatter.read_file("review.md")
+    # Read the Markdown file
+    with open("review.md") as file:
+        content = file.read()
 
-    lines = data["body"].split("\n")
+    # Separate frontmatter and body
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        metadata = yaml.safe_load(parts[1])
+        body = parts[2].strip()
+    else:
+        raise ValueError("No frontmatter found in the Markdown file.")
 
+    # Process the body to remove comments
+    lines = body.split("\n")
     lines_wo_comments = []
     skipping_comment = False
     for line in lines:
@@ -168,23 +178,23 @@ def generate_review() -> None:
             continue
         lines_wo_comments.append(line)
 
-    data["body"] = "\n".join(lines_wo_comments)
+    metadata["body"] = "\n".join(lines_wo_comments)
+    metadata["review"] = metadata["body"]
+    metadata["Date"] = str(date.today())
 
-    data["review"] = data["body"]
-    data["Date"] = str(date.today())
-
+    # Populate the template
     template_1 = "/home/gerit/ownCloud/data/labot/labot/review_template.docx"
-
     document_1 = MailMerge(template_1)
 
-    data["thesis_id"] = str(data["attributes"]["thesis_id"])
-    data["candidate"] = str(data["attributes"]["candidate"])
-    data["title"] = str(data["attributes"]["title"])
-    data["student_id"] = str(data["attributes"]["student_id"])
+    # Add required fields for the merge
+    metadata["thesis_id"] = str(metadata["thesis_id"])
+    metadata["candidate"] = str(metadata["candidate"])
+    metadata["title"] = str(metadata["title"])
+    metadata["student_id"] = str(metadata["student_id"])
 
-    document_1.merge(**data)
+    document_1.merge(**metadata)
     document_1.write(
-        f'{str(date.today())}-{data["thesis_id"]}-{data["candidate"].replace(" ", "_")}_Gutachten.docx'
+        f'{str(date.today())}-{metadata["thesis_id"]}-{metadata["candidate"].replace(" ", "_")}_Gutachten.docx'
     )
 
 
