@@ -493,14 +493,18 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
                 # Push the new branch to GitHub
                 origin.push(new_branch)
                 print(f"Branch '{new_branch}' pushed to GitHub.")
-
-                pr = self.github_repo.create_pull(
-                    title="Update paper.md",
-                    body="This PR was created by Labot.",
-                    head=new_branch,
-                    base="main",
-                )
-                print(f"Pull Request created: {pr.html_url}")
+                pr_title = "Update paper.md"
+                # if pull-request does not yet exist:
+                if any(pr.title == pr_title for pr in self.github_repo.get_pulls()):
+                    print("Pull Request already exists.")
+                else:
+                    pr = self.github_repo.create_pull(
+                        title=pr_title,
+                        body="This PR was created by Labot.",
+                        head=new_branch,
+                        base="main",
+                    )
+                    print(f"Pull Request created: {pr.html_url}")
 
                 # Switch to main
                 self.local_repo.heads.main.checkout()
