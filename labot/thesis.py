@@ -11,6 +11,10 @@ import yamale
 from frontmatter import Frontmatter
 from mailmerge import MailMerge
 
+# flake8: noqa: E501
+
+THESIS_DOCS_URL = "https://digital-work-lab.github.io/handbook/docs/30-teaching/30_processes/30.40.theses.html#grading"
+
 
 class Thesis:
     def __init__(
@@ -144,8 +148,7 @@ Overall, I therefore recommend a grade of XXXXX for {thesis.formatted_student()}
     with open("review.md", "w") as review_file:
         review_file.write(review_content)
 
-    url = "https://digital-work-lab.github.io/handbook/docs/30-teaching/30_processes/30.40.theses.html#grading"
-    webbrowser.open_new_tab(url)
+    webbrowser.open_new_tab(THESIS_DOCS_URL)
 
 
 def generate_review() -> None:
