@@ -195,6 +195,7 @@ class Repository:
     def _check_github_token_permissions(self) -> None:
         """Check if the GITHUB_TOKEN has permissions to create pull requests and issues."""
         url = f"{self.GH_API_BASE_URL}/repos/{self.GITHUB_REPOSITORY}"
+        print(url)
         response = requests.get(url, headers=self.HEADERS)
 
         if response.status_code != 200:
