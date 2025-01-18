@@ -157,9 +157,11 @@ def process_chunk(chunk: str, api_key: str) -> str:
     sanitized_chunk = re.sub(html_comment_pattern, "", sanitized_chunk, flags=re.DOTALL)
 
     # Define the prompt
-    prompt = f'''
-You are an expert in Markdown formatting. Revise the following Markdown content by introducing semantic line breaks.
-Do not modify YAML headers, Latex tables, or HTML comments. Only introduce line breaks for lines longer than 160 characters, and ensure that no new line is shorter than 50 characters after the break.
+    prompt = f'''You are an expert in Markdown formatting.
+Revise the following Markdown content by introducing semantic line breaks.
+Do not modify YAML headers, Latex tables, or HTML comments.
+Only introduce line breaks for lines longer than 160 characters,
+and ensure that no new line is shorter than 50 characters after the break.
 
 Markdown content:
 """
