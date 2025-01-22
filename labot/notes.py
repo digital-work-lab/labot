@@ -41,7 +41,7 @@ def create_paper_summary(missing_paper_summary: dict, references: dict) -> None:
     for concept in Path("concepts").iterdir():
         concept_str = concept.stem.replace("_", " ")
         if (
-            concept_str in paper_metadata["abstract"].lower()
+            concept_str in paper_metadata.get("abstract", "NA").lower()
             or concept_str in paper_metadata["title"].lower()
         ):
             matching_connections.append(concept.stem)
@@ -90,7 +90,7 @@ def import_missing_references(missing_references: list, references: dict) -> Non
 
         # TODO/TBD: rename pdf? update key?
         if missing_reference not in references:
-            references[missing_reference] = retrieved_record.data
+            references[missing_reference] = retrieved_record
         else:
             print(f"Reference {missing_reference} already exists in references")
             continue
