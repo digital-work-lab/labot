@@ -28,7 +28,7 @@ class Thesis:
         work_time_months: str,
         industry_partner: str,
         date_of_registration: str,
-        # deadline: str,
+        deadline_submission: str,
         date_of_actual_submission: str,
         deadline_for_the_review: str,
         date_review_created: str,
@@ -46,8 +46,7 @@ class Thesis:
         self.work_time_months = work_time_months
         self.industry_partner = industry_partner
         self.date_of_registration = date_of_registration
-        # TODO : calculate
-        # self.deadline = deadline
+        self.deadline_submission = deadline_submission
         self.date_of_actual_submission = date_of_actual_submission
         self.deadline_for_the_review = deadline_for_the_review
         self.date_review_created = date_review_created
@@ -73,7 +72,7 @@ class Thesis:
             "work_time_months": self.work_time_months,
             "industry_partner": self.industry_partner,
             "date_of_registration": self.date_of_registration,
-            # "deadline": self.deadline,
+            "deadline_submission": self.deadline_submission,
             "date_of_actual_submission": self.date_of_actual_submission,
             "deadline_for_the_review": self.deadline_for_the_review,
             "date_review_created": self.date_review_created,
