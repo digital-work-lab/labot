@@ -137,10 +137,9 @@ class Repository:
         issue_title = "Assets report"
 
         try:
-            repo = self.github_repo.get_repo(self.GITHUB_REPOSITORY)
 
             # Check if an issue with the same title already exists
-            issues = repo.get_issues(state="open")
+            issues = self.github_repo.get_issues(state="open")
             existing_issue = None
 
             for issue in issues:
@@ -151,7 +150,7 @@ class Repository:
 
             if not existing_issue and dangling_assets:
                 # Create a new issue if it does not exist
-                new_issue = repo.create_issue(
+                new_issue = self.github_repo.create_issue(
                     title=issue_title, body=dangling_assets_content
                 )
                 print(f"New issue created: {new_issue.html_url}")
@@ -276,17 +275,18 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
             )
 
             try:
-                repo = self.github_repo.get_repo(self.GITHUB_REPOSITORY)
 
                 # Check if an issue with the same title already exists
-                issues = repo.get_issues(state="open")
+                issues = self.github_repo.get_issues(state="open")
                 for issue in issues:
                     if issue.title == issue_title:
                         print(f"Issue already exists: {issue.html_url}")
                         return issue
 
                 # Create a new issue if it does not exist
-                new_issue = repo.create_issue(title=issue_title, body=issue_body)
+                new_issue = self.github_repo.create_issue(
+                    title=issue_title, body=issue_body
+                )
                 print(f"New issue created: {new_issue.html_url}")
                 return new_issue
 
