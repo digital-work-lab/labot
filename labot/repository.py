@@ -18,6 +18,7 @@ from git import Repo
 from github import Github
 from openai import OpenAI
 
+import labot.paper
 import labot.thesis
 
 yaml.add_representer(
@@ -418,109 +419,11 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
 
         return parsed_dict
 
-    def _check_update_paper_md(self) -> None:
-
-        paper_md = Path("paper.md")
-        if not paper_md.exists():
-            print("No 'paper.md' file found in the repository.")
-            return
-
-        metadata = self._parse_markdown_to_dict(paper_md)
-        # print(metadata)
-        if "project" not in metadata:
-            metadata["project"] = {}
-        if "status" not in metadata["project"]:
-            metadata["project"]["status"] = "writing"
-        if "started" not in metadata["project"]:
-            metadata["project"]["started"] = datetime.now().strftime("%Y-%m-%d")
-        if "manuscriptrepository" in metadata["project"]:
-            if metadata["project"]["manuscriptrepository"].startswith(
-                "https://github.com/"
-            ):
-                metadata["project"]["manuscriptrepository"] = (
-                    metadata["project"]["manuscriptrepository"].replace(
-                        "https://github.com/", "git@github.com:"
-                    )
-                    + ".git"
-                )
-        if "datarepository" in metadata["project"]:
-            if metadata["project"]["datarepository"].startswith("https://github.com/"):
-                metadata["project"]["datarepository"] = (
-                    metadata["project"]["datarepository"].replace(
-                        "https://github.com/", "git@github.com:"
-                    )
-                    + ".git"
-                )
-
-        paper_md_content = paper_md.read_text(encoding="utf-8")
-        # remove yaml header (content after second "---")
-        paper_md_content = paper_md_content.split("---", 2)[2]
-        with open(paper_md, "w", encoding="utf-8") as file:
-            # Write the modified content back with the YAML header serialized using custom representer
-            file.write(
-                f"---\n{yaml.dump(metadata, allow_unicode=True, default_flow_style=False)}"
-                f"---{paper_md_content}"
-            )
-
-        # If there are changes, create a branch, commit, push, and pull-request
-
-        current_branch = self.local_repo.active_branch.name
-        if self._has_changes_to_commit():
-            new_branch = "update_paper_md"
-            # Get the current branch
-            if current_branch == "main":
-                if new_branch not in self.local_repo.heads:
-                    # Create the new branch from the current commit
-                    new_branch_ref = self.local_repo.create_head(
-                        new_branch, self.local_repo.head.commit
-                    )
-                    new_branch_ref.checkout()
-                    print(f"New branch '{new_branch}' created and checked out.")
-                else:
-                    new_branch_ref = self.local_repo.heads[new_branch]
-                    new_branch_ref.checkout()
-                    print(f"Branch '{new_branch}' already exists. Checked out.")
-
-            # Add all changes
-            self.local_repo.git.add("--all")
-
-            # Create a commit for the changes
-            if not self.local_repo.index.commit("Update paper.md"):
-                print("No changes to commit.")
-                return
-
-            origin = self.local_repo.remotes.origin
-            if current_branch == "main":
-                # Push the new branch to GitHub
-                origin.push(new_branch)
-                print(f"Branch '{new_branch}' pushed to GitHub.")
-                pr_title = "Update paper.md"
-                # if pull-request does not yet exist:
-                if any(pr.title == pr_title for pr in self.github_repo.get_pulls()):
-                    print("Pull Request already exists.")
-                else:
-                    pr = self.github_repo.create_pull(
-                        title=pr_title,
-                        body="This PR was created by Labot.",
-                        head=new_branch,
-                        base="main",
-                    )
-                    print(f"Pull Request created: {pr.html_url}")
-
-                # Switch to main
-                self.local_repo.heads.main.checkout()
-            else:
-                origin.push(current_branch)
-
-        else:
-            print("No changes found in the branch. Skipping PR creation.")
-            return
-
     def _run_research_repo_checks(self) -> None:
         """Run checks specific to research repositories."""
         print("Running research repository checks...")
 
-        makefile_path = "Makefile"  # Adjust if the Makefile is in a subdirectory
+        makefile_path = "Makefile"
 
         # Check if Makefile exists
         if not os.path.isfile(makefile_path):
@@ -537,10 +440,28 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
         if not os.path.isfile("paper.md"):
             print("No 'paper.md' file found in the repository.")
             self.VALID = False
+            return
 
-        self._check_update_paper_md()
+        try:
+            paper = labot.paper.Paper("paper.md", self.local_repo, self.github_repo)
 
-        self._colrev_sync_references()
+            if paper.just_published():
+
+                issue = self.github_repo.create_issue(
+                    title="Paper published",
+                    body="Great work 🎊🍾🍀\n"
+                    "Here is the publication and dissemination checklist:\n"
+                    "- [ ] update output.bib, link PDF\n"
+                    "- [ ] add to ORCID, ....\n",
+                    assignee="geritwagner",
+                )
+                print(f"Issue created: {issue.html_url}")
+
+            if paper.status not in ["published"]:
+                self._colrev_sync_references()
+        except Exception as exc:
+            print(exc)
+            self.VALID = False
 
     def _run_teaching_repo_checks(self) -> None:
         """Run checks specific to teaching repositories."""

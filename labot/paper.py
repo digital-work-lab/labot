@@ -1,10 +1,137 @@
 import os
 import re
 import subprocess
+from datetime import datetime
+from pathlib import Path
 from typing import List
 
 import git
+import yaml
+from git import Repo
+from github import Github
 from openai import OpenAI
+
+
+class Paper:
+    def __init__(
+        self, paper_md_path: str, local_repo: Repo, github_repo: Github
+    ) -> None:
+        self.paper_md = Path(paper_md_path)
+        self.local_repo = local_repo
+        self.github_repo = github_repo
+        self.metadata = self._load_metadata()
+        self._update_metadata()  # Ensure metadata is up-to-date
+        self._set_attributes_from_metadata()
+        self._save_metadata()  # Save any updates to paper.md
+
+    def just_published(self) -> bool:
+        if self.status != "published":
+            return False
+
+        last_commit = self.local_repo.head.commit.parents[0]
+        paper_md_content = last_commit.tree / str(self.paper_md).replace("\\", "/")
+        yaml_header = (
+            paper_md_content.data_stream.read().decode("utf-8").split("---", 2)[1]
+        )
+        last_status = yaml.safe_load(yaml_header)["project"]["status"]
+        return last_status != "published"
+
+    def _load_metadata(self) -> dict:
+        """Parse YAML metadata from paper.md."""
+        content = self.paper_md.read_text(encoding="utf-8")
+        metadata, _ = content.split("---", 2)[1:3]
+        return yaml.safe_load(metadata) or {}
+
+    def _update_metadata(self) -> None:
+        """Ensure required metadata fields are present and updated."""
+        if "project" not in self.metadata:
+            self.metadata["project"] = {}
+        if "status" not in self.metadata["project"]:
+            self.metadata["project"]["status"] = "writing"
+        if "started" not in self.metadata["project"]:
+            self.metadata["project"]["started"] = datetime.now().strftime("%Y-%m-%d")
+        if "manuscriptrepository" in self.metadata["project"]:
+            repo_url = self.metadata["project"]["manuscriptrepository"]
+            if repo_url.startswith("https://github.com/"):
+                self.metadata["project"]["manuscriptrepository"] = (
+                    repo_url.replace("https://github.com/", "git@github.com:") + ".git"
+                )
+        if "datarepository" in self.metadata["project"]:
+            data_url = self.metadata["project"]["datarepository"]
+            if data_url.startswith("https://github.com/"):
+                self.metadata["project"]["datarepository"] = (
+                    data_url.replace("https://github.com/", "git@github.com:") + ".git"
+                )
+
+    def _set_attributes_from_metadata(self) -> None:
+        """Set specific attributes from metadata."""
+        project_metadata = self.metadata.get("project", {})
+        self.status = project_metadata.get("status", "unknown")
+        self.started = project_metadata.get("started", "unknown")
+        self.manuscript_repository = project_metadata.get("manuscriptrepository", None)
+        self.data_repository = project_metadata.get("datarepository", None)
+
+    def _save_metadata(self) -> None:
+        """Write updated metadata and content back to paper.md."""
+        content = self.paper_md.read_text(encoding="utf-8").split("---", 2)[2]
+        with open(self.paper_md, "w", encoding="utf-8") as file:
+            file.write(
+                f"---\n{yaml.dump(self.metadata, allow_unicode=True)}---{content}"
+            )
+
+    def _has_changes_to_commit(self) -> bool:
+        """Check if there are changes to commit."""
+        return self.local_repo.is_dirty(untracked_files=True)
+
+    def _commit_and_push_changes(self) -> None:
+        """Commit and push changes to a new branch, and create a pull request."""
+        current_branch = self.local_repo.active_branch.name
+        new_branch = "update_paper_md"
+
+        origin = self.local_repo.remotes.origin
+        if current_branch == "main":
+            if new_branch not in self.local_repo.heads:
+                new_branch_ref = self.local_repo.create_head(
+                    new_branch, self.local_repo.head.commit
+                )
+                new_branch_ref.checkout()
+                print(f"New branch '{new_branch}' created and checked out.")
+            else:
+                self.local_repo.heads[new_branch].checkout()
+                print(f"Checked out existing branch '{new_branch}'.")
+
+            self.local_repo.git.add("--all")
+            self.local_repo.index.commit("Update paper.md")
+            origin.push(new_branch)
+            print(f"Pushed branch '{new_branch}' to GitHub.")
+
+            # Create PR if it doesn't exist
+            pr_title = "Update paper.md"
+            if not any(pr.title == pr_title for pr in self.github_repo.get_pulls()):
+                pr = self.github_repo.create_pull(
+                    title=pr_title,
+                    body="This PR was created by Labot.",
+                    head=new_branch,
+                    base="main",
+                )
+                print(f"Pull Request created: {pr.html_url}")
+            else:
+                print("Pull Request already exists.")
+
+            # Switch back to the main branch
+            self.local_repo.heads.main.checkout()
+        else:
+            origin.push(current_branch)
+
+    def update_paper_md(self) -> None:
+        """Main function to check, update, and synchronize paper.md."""
+        self._update_metadata()
+        self._save_metadata()
+
+        if self._has_changes_to_commit():
+            self._commit_and_push_changes()
+        else:
+            print("No changes to commit. Skipping push and PR creation.")
 
 
 def clone_repository() -> None:
