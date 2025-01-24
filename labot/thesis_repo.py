@@ -4,6 +4,8 @@ import os
 import pprint
 import re
 from datetime import date
+from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import quote
 
@@ -556,6 +558,15 @@ class ThesisRepo:
             )
             notes_file_path = f"https://github.com/{self.REPO_NAME}/blob/main/theses/{thesis.filename}"
 
+            date_format = "%Y-%m-%d"
+            date_of_actual_submission = datetime.strptime(
+                thesis.date_of_actual_submission, date_format
+            )
+
+            # thesis.date_of_actual_submission + 3 months
+            greading_target = date_of_actual_submission + timedelta(days=14)
+            grading_deadline = date_of_actual_submission + timedelta(days=90)
+
             print("- Respond to issue")
             reply_body = (
                 f"Thesis matched successfully!\n\n"
@@ -563,10 +574,16 @@ class ThesisRepo:
                 f"**Title:** {thesis.title}\n"
                 f"**Notes:** [file]({notes_file_path})\n\n"
                 f"**PDF:** [file]({pdf_file_path})\n\n"
-                f"Supervisor: @{thesis.supervisor} \n"
-                f"Please do your best to complete the review by XY (2 weeks) (official deadline: XY)"
-                f"TODO: Plagiarism check (automatically mark XY_thesis.md?)"
-                f"To create the review, use `labot thesis --grade`"
+                f"Supervisor: @{thesis.supervisor}\n"
+                f"Please do your best to complete the review by {greading_target.strftime('%Y-%m-%d')} "
+                f"(official deadline: {grading_deadline.strftime("%Y-%m-%d")})"
+                f"- [ ] Plagiarism check with [Turnitin](https://www.uni-bamberg.de/its/turnitin)"
+                # TODO automatically mark XY_thesis.md?
+                "- [handbook: process](https://digital-work-lab.github.io/handbook/docs/30-teaching/"
+                "30_processes/30.52.plagiarism.html#resources)"
+                f"- [ ] Create the review, using `labot thesis --grade`"
+                f"- [ ] Print/sign/submit the review"
+                f"- [ ] Invite student to the feedback session"
             )
             new_submission.create_comment(reply_body)
 
