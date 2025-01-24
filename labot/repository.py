@@ -445,6 +445,7 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
         try:
             paper = labot.paper.Paper("paper.md", self.local_repo, self.github_repo)
 
+            # Note: trigger on status changes because this is what users are aware of
             if paper.just_published():
 
                 issue = self.github_repo.create_issue(
