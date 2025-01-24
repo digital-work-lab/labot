@@ -865,11 +865,6 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
 
     def _read_availability_md(self, file_path: str) -> str:
         """Reads the Mermaid chart from the markdown file."""
-        print(os.getcwd())
-        # print listdir
-        print(os.listdir())
-        # print content of _includes dir
-        print(os.listdir("_includes"))
         with open(file_path) as file:
             content = file.read()
         return content
