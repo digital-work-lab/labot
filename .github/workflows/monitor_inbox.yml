@@ -30,8 +30,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install git+https://github.com/digital-work-lab/labot.git
-          pip install exchangelib
+          pip install exchangelib PyGitHub
 
       - name: Set Git user name and email
         run: |
@@ -44,6 +43,6 @@ jobs:
         env:
           EMAIL: ${{ secrets.EXCHANGE_EMAIL }}
           PASSWORD: ${{ secrets.EXCHANGE_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.MY_PAT_TOKEN }}
         run: |
-          python -m labot.monitor_email
-
+          python labot/monitor_email.py
