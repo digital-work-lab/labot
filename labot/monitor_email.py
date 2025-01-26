@@ -68,11 +68,11 @@ if __name__ == "__main__":
     for email in new_emails:
         if email.subject.startswith("Evaluationsauswertung zur Veranstaltung"):
 
+            title = email.subject
             if issue_exists(repo, title):
                 print(f"Issue with title '{title}' already exists. Skipping creation.")
-                return
+                continue
 
-            title = email.subject
             body = (
                 "We received the evaluation results. Please upload them [here](https://digital-work-lab.github.io/handbook/docs/30-teaching/30_processes/30.21.evaluations.html) and add them to the courses."
                 "- [ ] TODO"
