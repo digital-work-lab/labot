@@ -74,8 +74,9 @@ if __name__ == "__main__":
                 continue
 
             body = (
-                "We received the evaluation results. Please upload them [here](https://digital-work-lab.github.io/handbook/docs/30-teaching/30_processes/30.21.evaluations.html) and add them to the courses."
-                "- [ ] TODO"
+                "📧 We received the evaluation results.\n"
+                "- [ ] Upload them [here](https://github.com/digital-work-lab/handbook/tree/main/assets/evaluations)\n"
+                "- [ ] Add them to the [courses](https://github.com/digital-work-lab/handbook/tree/main/_courses).\n"
             )
             assignees = ["geritwagner"]
 
