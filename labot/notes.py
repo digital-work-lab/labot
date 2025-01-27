@@ -76,7 +76,7 @@ def import_missing_references(missing_references: list, references: dict) -> Non
             new_record_object = local_index.retrieve_based_on_colrev_pdf_id(
                 colrev_pdf_id=colrev_pdf_id
             )
-            retrieved_record = new_record_object
+            retrieved_record_dict = new_record_object.data
 
         except colrev_exceptions.RecordNotInIndexException:
 
@@ -84,13 +84,25 @@ def import_missing_references(missing_references: list, references: dict) -> Non
                 environment_manager=environment_manager,
                 pdf_path=pdf_path,
             )
-            retrieved_record = tei.get_metadata()
-            if "doi" in retrieved_record:
-                retrieved_record = api.query_doi(doi=retrieved_record["doi"])
+            retrieved_record_dict = tei.get_metadata()
+            if "doi" in retrieved_record_dict:
+                retrieved_record_dict = api.query_doi(
+                    doi=retrieved_record_dict["doi"]
+                ).data
+
+        # remove all fields starting with "colrev_"
+        retrieved_record_dict = {
+            key: value
+            for key, value in retrieved_record_dict.items()
+            if not key.startswith("colrev")
+        }
+        # also remove curation_ID and language
+        retrieved_record_dict.pop("curation_ID", None)
+        retrieved_record_dict.pop("language", None)
 
         # TODO/TBD: rename pdf? update key?
         if missing_reference not in references:
-            references[missing_reference] = retrieved_record
+            references[missing_reference] = retrieved_record_dict
         else:
             print(f"Reference {missing_reference} already exists in references")
             continue
