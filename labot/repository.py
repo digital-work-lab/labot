@@ -317,6 +317,13 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
 
     def _colrev_sync_references(self) -> None:
 
+        pr_title = "ColRev Sync"
+        # return if a pull request with the pr_title exists
+        for pr in self.github_repo.get_pulls(state="open"):
+            if pr.title == pr_title:
+                print(f"Pull Request '{pr_title}' already exists.")
+                return
+
         # Run the colrev-sync command
         try:
             # Run the colrev-sync command and capture the output
@@ -378,7 +385,7 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
 
                 # Create a pull request
                 pr = self.github_repo.create_pull(
-                    title="ColRev Sync",
+                    title=pr_title,
                     body="This PR was created using the colrev-sync command.",
                     head=new_branch,
                     base="main",
@@ -451,7 +458,7 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
                 issue = self.github_repo.create_issue(
                     title="Paper published",
                     body="Great work 🎊🍾🍀\n"
-                    "Here is the publication and dissemination checklist:\n"
+                    "Here is the improvement, publication and dissemination checklist:\n"
                     "- [ ] update output.bib, link PDF\n"
                     "- [ ] add to ORCID, ....\n",
                     assignee="geritwagner",
