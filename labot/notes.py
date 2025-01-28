@@ -2,6 +2,7 @@
 """Labot notes management."""
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import colrev.env.environment_manager
@@ -112,6 +113,12 @@ def import_missing_references(missing_references: list, references: dict) -> Non
 
 
 def check_notes() -> None:
+
+    event_name = os.getenv("GITHUB_EVENT_NAME")
+
+    if event_name == "pull_request":
+        print("CALLED")
+        return
 
     pdfs = list(Path("pdfs").iterdir())
     papers = list(Path("papers").iterdir())
