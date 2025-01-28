@@ -74,6 +74,7 @@ def import_missing_references(missing_references: list, references: dict) -> Non
     for missing_reference in missing_references:
         print(f"Extracting {missing_reference}")
         pdf_path = Path.cwd() / Path(f"pdfs/{missing_reference}.pdf")
+        print(pdf_path.stat().st_size)
 
         if not pdf_path.exists() or pdf_path.stat().st_size < 100:
             print(f"Fetching {pdf_path} using Git LFS...")
