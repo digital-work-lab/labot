@@ -11,7 +11,6 @@ import colrev.env.local_index
 import colrev.env.tei_parser
 import colrev.exceptions as colrev_exceptions
 import colrev.loader.load_utils
-import pymupdf
 from colrev.packages.crossref.src import crossref_api
 from colrev.writer.write_utils import write_file
 from git import Repo
@@ -85,30 +84,6 @@ def import_missing_references(missing_references: list, references: dict) -> Non
             print(f"Successfully fetched: {pdf_path}")
         except subprocess.CalledProcessError as e:
             print(f"Failed to fetch {pdf_path}. Error: {e}")
-        # else:
-        #     print(f"File already exists and appears to be valid: {pdf_path}")
-
-        # Validate file size
-        print(f"File size after fetching: {pdf_path.stat().st_size} bytes")
-        if pdf_path.stat().st_size < 1024:  # If too small, skip
-            print(f"File {pdf_path} might still be invalid. Double-check Git LFS configuration.")
-            continue
-
-        # Check for Git LFS placeholder
-        with open(pdf_path, "rb") as f:
-            header = f.read(100)
-            if b"version https://git-lfs.github.com/spec" in header:
-                print(f"File {pdf_path} is still a Git LFS pointer file!")
-                continue
-
-        # Process the PDF with PyMuPDF
-        try:
-            with pymupdf.Document(pdf_path) as doc:
-                text = doc.load_page(0).get_text()
-                print(f"Extracted text: {text}")
-        except pymupdf.FileDataError:
-            print(f"The file {pdf_path} is not a valid PDF. It might be corrupt.")
-            continue
 
         try:
             colrev_pdf_id = colrev.record.record_identifier.get_colrev_pdf_id(pdf_path)
@@ -177,6 +152,8 @@ def check_notes(local_repo: Repo = None) -> None:
         assert local_repo
         local_repo.git.add("--all")
         local_repo.index.commit("Updates")
+        origin = local_repo.remotes.origin
+        origin.push()
 
 
 if __name__ == "__main__":
