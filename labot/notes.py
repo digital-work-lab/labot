@@ -75,10 +75,6 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         print(f"Extracting {missing_reference}")
         pdf_path = Path.cwd() / Path(f"pdfs/{missing_reference}.pdf")
 
-        with pymupdf.Document(pdf_path) as doc:
-            text = doc.load_page(0).get_text()
-            print(text)
-
         if not pdf_path.exists() or pdf_path.stat().st_size < 100:
             print(f"Fetching {pdf_path} using Git LFS...")
 
