@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 from pathlib import Path
 
 import colrev.env.environment_manager
@@ -72,6 +73,19 @@ def import_missing_references(missing_references: list, references: dict) -> Non
     for missing_reference in missing_references:
         print(f"Extracting {missing_reference}")
         pdf_path = Path.cwd() / Path(f"pdfs/{missing_reference}.pdf")
+
+        if not pdf_path.exists() or pdf_path.stat().st_size < 100:
+            print(f"Fetching {pdf_path} using Git LFS...")
+
+            try:
+                subprocess.run(
+                    ["git", "lfs", "pull", "--include", str(pdf_path)], check=True
+                )
+                print(f"Successfully fetched: {pdf_path}")
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to fetch {pdf_path}. Error: {e}")
+        else:
+            print(f"File already exists and appears to be valid: {pdf_path}")
 
         try:
             colrev_pdf_id = colrev.record.record_identifier.get_colrev_pdf_id(pdf_path)
