@@ -77,7 +77,6 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         print(f"Extracting {missing_reference}")
         pdf_path = Path.cwd() / Path(f"pdfs/{missing_reference}.pdf")
 
-        # if not pdf_path.exists() or pdf_path.stat().st_size < 100:
         print(f"Fetching {pdf_path} using Git LFS...")
         try:
             subprocess.run(
@@ -132,13 +131,9 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         print(retrieved_record_dict)
         if "ID" not in retrieved_record_dict:
             retrieved_record_dict["ID"] = missing_reference
-        # TODO/TBD: rename pdf? update key?
+
         # TODO : if it already exists?!
         references[retrieved_record_dict["ID"]] = retrieved_record_dict
-        # if missing_reference not in references:
-        #     references[retrieved_record_dict["ID"]] = retrieved_record_dict
-        # else:
-        #     print(f"Reference {missing_reference} already exists in references")
 
         new_file = (
             Path.cwd() / Path("pdfs") / Path(f"{retrieved_record_dict['ID']}.pdf")
@@ -157,14 +152,6 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         except Exception as e:
             print(f"Error renaming file: {e}")
             break
-
-        # Step 2: Ensure the new file is tracked by Git LFS
-        # try:
-        #     subprocess.run(["git", "lfs", "track", str(new_file)], check=True)
-        #     print(f"Tracked {new_file} in Git LFS.")
-        # except subprocess.CalledProcessError as e:
-        #     print(f"Error tracking file in Git LFS: {e}")
-        #     return
 
         break  # TODO : tbd: add all or selected?
 
@@ -196,7 +183,7 @@ def check_notes(local_repo: Repo = None) -> None:
         local_repo.git.add("pdfs*")
         local_repo.git.add("papers*")
         local_repo.git.add("references.bib")
-        local_repo.index.commit("Updates")
+        local_repo.index.commit("Prepared paper summaries 🚀")
         origin = local_repo.remotes.origin
         origin.push()
 
