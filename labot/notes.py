@@ -80,7 +80,10 @@ def import_missing_references(missing_references: list, references: dict) -> Non
             )
             retrieved_record_dict = new_record_object.data
 
-        except colrev_exceptions.RecordNotInIndexException:
+        except (
+            colrev_exceptions.RecordNotInIndexException,
+            colrev_exceptions.InvalidPDFException,
+        ):
 
             tei = colrev.env.tei_parser.TEIParser(
                 environment_manager=environment_manager,
