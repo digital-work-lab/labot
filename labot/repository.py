@@ -540,7 +540,7 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
     def _run_knowledge_repo_checks(self) -> None:
         """Run checks specific to the knowledge repository."""
 
-        labot.notes.check_notes()
+        labot.notes.check_notes(self.local_repo)
 
         references = colrev.loader.load_utils.load(
             filename=Path("references.bib"),

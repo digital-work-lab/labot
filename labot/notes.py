@@ -12,6 +12,7 @@ import colrev.exceptions as colrev_exceptions
 import colrev.loader.load_utils
 from colrev.packages.crossref.src import crossref_api
 from colrev.writer.write_utils import write_file
+from git import Repo
 
 references_file = Path("references.bib")
 
@@ -112,13 +113,9 @@ def import_missing_references(missing_references: list, references: dict) -> Non
     write_file(records_dict=references, filename=references_file)
 
 
-def check_notes() -> None:
+def check_notes(local_repo: Repo = None) -> None:
 
     event_name = os.getenv("GITHUB_EVENT_NAME")
-
-    if event_name == "pull_request":
-        print("CALLED")
-        return
 
     pdfs = list(Path("pdfs").iterdir())
     papers = list(Path("papers").iterdir())
@@ -135,6 +132,11 @@ def check_notes() -> None:
     print(missing_paper_summaries)
     for missing_paper_summary in missing_paper_summaries:
         create_paper_summary(missing_paper_summary, references)
+
+    if event_name == "pull_request":
+        assert local_repo
+        local_repo.git.add("--all")
+        local_repo.index.commit("Updates")
 
 
 if __name__ == "__main__":
