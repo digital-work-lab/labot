@@ -12,10 +12,10 @@ import colrev.env.local_index
 import colrev.env.tei_parser
 import colrev.exceptions as colrev_exceptions
 import colrev.loader.load_utils
+import colrev.record.record_id_setter
 from colrev.packages.crossref.src import crossref_api
 from colrev.writer.write_utils import write_file
 from git import Repo
-import colrev.record.record_id_setter
 
 references_file = Path("references.bib")
 
@@ -127,28 +127,30 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         )
         retrieved_record_dict = updated_record["record"]
         retrieved_record_dict.pop(colrev.constants.Fields.STATUS, None)
+        print(retrieved_record_dict)
         # TODO/TBD: rename pdf? update key?
         if missing_reference not in references:
             references[missing_reference] = retrieved_record_dict
         else:
             print(f"Reference {missing_reference} already exists in references")
+        input(retrieved_record_dict["ID"])
+        if "ID" in retrieved_record_dict:
+            new_file = Path("pdfs") / Path(f"{retrieved_record_dict['ID']}.pdf")
 
-        new_file = Path("pdfs") / Path(f"{retrieved_record_dict['ID']}.pdf")
-
-        try:
-            pdf_path.rename(new_file)
-            print(f"Renamed file: {pdf_path} -> {new_file}")
-        except Exception as e:
-            print(f"Error renaming file: {e}")
-            return
+            try:
+                pdf_path.rename(new_file)
+                print(f"Renamed file: {pdf_path} -> {new_file}")
+            except Exception as e:
+                print(f"Error renaming file: {e}")
+                return
 
         # Step 2: Ensure the new file is tracked by Git LFS
-        try:
-            subprocess.run(["git", "lfs", "track", str(new_file)], check=True)
-            print(f"Tracked {new_file} in Git LFS.")
-        except subprocess.CalledProcessError as e:
-            print(f"Error tracking file in Git LFS: {e}")
-            return
+        # try:
+        #     subprocess.run(["git", "lfs", "track", str(new_file)], check=True)
+        #     print(f"Tracked {new_file} in Git LFS.")
+        # except subprocess.CalledProcessError as e:
+        #     print(f"Error tracking file in Git LFS: {e}")
+        #     return
 
         break  # TODO : tbd: add all or selected?
 
