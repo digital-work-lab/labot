@@ -117,15 +117,16 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         # also remove curation_ID and language
         retrieved_record_dict.pop("curation_ID", None)
         retrieved_record_dict.pop("language", None)
-
         id_setter = colrev.record.record_id_setter.IDSetter(
             id_pattern=colrev.constants.IDPattern.three_authors_year,
             skip_local_index=False,
         )
+        retrieved_record_dict[colrev.constants.Fields.STATUS] = "md_imported"
         updated_record = id_setter.set_ids(
             records={"record": retrieved_record_dict},
         )
         retrieved_record_dict = updated_record["record"]
+        retrieved_record_dict.pop(colrev.constants.Fields.STATUS, None)
         # TODO/TBD: rename pdf? update key?
         if missing_reference not in references:
             references[missing_reference] = retrieved_record_dict
