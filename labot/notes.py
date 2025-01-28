@@ -150,7 +150,8 @@ def check_notes(local_repo: Repo = None) -> None:
 
     if event_name == "pull_request":
         assert local_repo
-        local_repo.git.add("--all")
+        local_repo.git.add("papers*")
+        local_repo.git.add("references.bib")
         local_repo.index.commit("Updates")
         origin = local_repo.remotes.origin
         origin.push()
