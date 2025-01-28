@@ -130,7 +130,7 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         retrieved_record_dict = next(iter(updated_record.values()))
         retrieved_record_dict.pop(colrev.constants.Fields.STATUS, None)
         print(retrieved_record_dict)
-        if "ID" in retrieved_record_dict:
+        if "ID" not in retrieved_record_dict:
             retrieved_record_dict["ID"] = missing_reference
         # TODO/TBD: rename pdf? update key?
         # TODO : if it already exists?!
@@ -140,20 +140,23 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         # else:
         #     print(f"Reference {missing_reference} already exists in references")
 
-        new_file = Path("pdfs") / Path(f"{retrieved_record_dict['ID']}.pdf")
-        note_file = Path.cwd() / Path("notes") / Path(f"{missing_reference}.md")
+        new_file = (
+            Path.cwd() / Path("pdfs") / Path(f"{retrieved_record_dict['ID']}.pdf")
+        )
+        note_file = Path.cwd() / Path("papers") / Path(f"{missing_reference}.md")
         summary_file = (
             Path.cwd() / Path("papers") / Path(f"{retrieved_record_dict['ID']}.md")
         )
 
         try:
             pdf_path.rename(new_file)
-            note_file.rename(summary_file)
+            if note_file.exists():
+                note_file.rename(summary_file)
 
             print(f"Renamed file: {pdf_path} -> {new_file}")
         except Exception as e:
             print(f"Error renaming file: {e}")
-            return
+            break
 
         # Step 2: Ensure the new file is tracked by Git LFS
         # try:
