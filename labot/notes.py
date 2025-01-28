@@ -133,7 +133,7 @@ def import_missing_references(missing_references: list, references: dict) -> Non
             references[missing_reference] = retrieved_record_dict
         else:
             print(f"Reference {missing_reference} already exists in references")
-        input(retrieved_record_dict["ID"])
+
         if "ID" in retrieved_record_dict:
             new_file = Path("pdfs") / Path(f"{retrieved_record_dict['ID']}.pdf")
 
