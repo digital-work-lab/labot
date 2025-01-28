@@ -88,9 +88,27 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         # else:
         #     print(f"File already exists and appears to be valid: {pdf_path}")
 
-        with pymupdf.Document(pdf_path) as doc:
-            text = doc.load_page(0).get_text()
-            print(text)
+        # Validate file size
+        print(f"File size after fetching: {pdf_path.stat().st_size} bytes")
+        if pdf_path.stat().st_size < 1024:  # If too small, skip
+            print(f"File {pdf_path} might still be invalid. Double-check Git LFS configuration.")
+            continue
+
+        # Check for Git LFS placeholder
+        with open(pdf_path, "rb") as f:
+            header = f.read(100)
+            if b"version https://git-lfs.github.com/spec" in header:
+                print(f"File {pdf_path} is still a Git LFS pointer file!")
+                continue
+
+        # Process the PDF with PyMuPDF
+        try:
+            with pymupdf.Document(pdf_path) as doc:
+                text = doc.load_page(0).get_text()
+                print(f"Extracted text: {text}")
+        except pymupdf.FileDataError:
+            print(f"The file {pdf_path} is not a valid PDF. It might be corrupt.")
+            continue
 
         try:
             colrev_pdf_id = colrev.record.record_identifier.get_colrev_pdf_id(pdf_path)
