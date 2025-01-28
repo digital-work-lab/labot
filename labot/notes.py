@@ -13,6 +13,7 @@ import colrev.env.tei_parser
 import colrev.exceptions as colrev_exceptions
 import colrev.loader.load_utils
 import colrev.record.record_id_setter
+from colrev.constants import RecordState
 from colrev.packages.crossref.src import crossref_api
 from colrev.writer.write_utils import write_file
 from git import Repo
@@ -121,7 +122,7 @@ def import_missing_references(missing_references: list, references: dict) -> Non
             id_pattern=colrev.constants.IDPattern.three_authors_year,
             skip_local_index=False,
         )
-        retrieved_record_dict[colrev.constants.Fields.STATUS] = "md_imported"
+        retrieved_record_dict[colrev.constants.Fields.STATUS] = RecordState.md_imported
         updated_record = id_setter.set_ids(
             records={"record": retrieved_record_dict},
         )
