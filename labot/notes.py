@@ -130,25 +130,30 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         retrieved_record_dict = next(iter(updated_record.values()))
         retrieved_record_dict.pop(colrev.constants.Fields.STATUS, None)
         print(retrieved_record_dict)
-        # TODO/TBD: rename pdf? update key?
-        if missing_reference not in references:
-            references[retrieved_record_dict["ID"]] = retrieved_record_dict
-        else:
-            print(f"Reference {missing_reference} already exists in references")
-
         if "ID" in retrieved_record_dict:
-            new_file = Path("pdfs") / Path(f"{retrieved_record_dict['ID']}.pdf")
-            note_file = Path("notes") / Path(f"{missing_reference}.md")
-            summary_file = Path("papers") / Path(f"{retrieved_record_dict['ID']}.md")
+            retrieved_record_dict["ID"] = missing_reference
+        # TODO/TBD: rename pdf? update key?
+        # TODO : if it already exists?!
+        references[retrieved_record_dict["ID"]] = retrieved_record_dict
+        # if missing_reference not in references:
+        #     references[retrieved_record_dict["ID"]] = retrieved_record_dict
+        # else:
+        #     print(f"Reference {missing_reference} already exists in references")
 
-            try:
-                pdf_path.rename(new_file)
-                note_file.rename(summary_file)
+        new_file = Path("pdfs") / Path(f"{retrieved_record_dict['ID']}.pdf")
+        note_file = Path.cwd() / Path("notes") / Path(f"{missing_reference}.md")
+        summary_file = (
+            Path.cwd() / Path("papers") / Path(f"{retrieved_record_dict['ID']}.md")
+        )
 
-                print(f"Renamed file: {pdf_path} -> {new_file}")
-            except Exception as e:
-                print(f"Error renaming file: {e}")
-                return
+        try:
+            pdf_path.rename(new_file)
+            note_file.rename(summary_file)
+
+            print(f"Renamed file: {pdf_path} -> {new_file}")
+        except Exception as e:
+            print(f"Error renaming file: {e}")
+            return
 
         # Step 2: Ensure the new file is tracked by Git LFS
         # try:
