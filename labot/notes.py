@@ -11,6 +11,7 @@ import colrev.env.local_index
 import colrev.env.tei_parser
 import colrev.exceptions as colrev_exceptions
 import colrev.loader.load_utils
+import pymupdf
 from colrev.packages.crossref.src import crossref_api
 from colrev.writer.write_utils import write_file
 from git import Repo
@@ -74,6 +75,10 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         print(f"Extracting {missing_reference}")
         pdf_path = Path.cwd() / Path(f"pdfs/{missing_reference}.pdf")
 
+        with pymupdf.Document(pdf_path) as doc:
+            text = doc.load_page(0).get_text()
+            print(text)
+
         if not pdf_path.exists() or pdf_path.stat().st_size < 100:
             print(f"Fetching {pdf_path} using Git LFS...")
 
@@ -86,6 +91,10 @@ def import_missing_references(missing_references: list, references: dict) -> Non
                 print(f"Failed to fetch {pdf_path}. Error: {e}")
         else:
             print(f"File already exists and appears to be valid: {pdf_path}")
+
+        with pymupdf.Document(pdf_path) as doc:
+            text = doc.load_page(0).get_text()
+            print(text)
 
         try:
             colrev_pdf_id = colrev.record.record_identifier.get_colrev_pdf_id(pdf_path)
