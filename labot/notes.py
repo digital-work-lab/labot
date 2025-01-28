@@ -73,7 +73,6 @@ def import_missing_references(missing_references: list, references: dict) -> Non
     for missing_reference in missing_references:
         print(f"Extracting {missing_reference}")
         pdf_path = Path.cwd() / Path(f"pdfs/{missing_reference}.pdf")
-        print(pdf_path.stat().st_size)
 
         # if not pdf_path.exists() or pdf_path.stat().st_size < 100:
         print(f"Fetching {pdf_path} using Git LFS...")
@@ -122,7 +121,24 @@ def import_missing_references(missing_references: list, references: dict) -> Non
             references[missing_reference] = retrieved_record_dict
         else:
             print(f"Reference {missing_reference} already exists in references")
-            continue
+
+        new_file = Path("pdfs") / Path(f"{retrieved_record_dict['ID']}.pdf")
+
+        try:
+            pdf_path.rename(new_file)
+            print(f"Renamed file: {pdf_path} -> {new_file}")
+        except Exception as e:
+            print(f"Error renaming file: {e}")
+            return
+
+        # Step 2: Ensure the new file is tracked by Git LFS
+        try:
+            subprocess.run(["git", "lfs", "track", str(new_file)], check=True)
+            print(f"Tracked {new_file} in Git LFS.")
+        except subprocess.CalledProcessError as e:
+            print(f"Error tracking file in Git LFS: {e}")
+            return
+
         break  # TODO : tbd: add all or selected?
 
     write_file(records_dict=references, filename=references_file)
@@ -150,6 +166,7 @@ def check_notes(local_repo: Repo = None) -> None:
 
     if event_name == "pull_request":
         assert local_repo
+        local_repo.git.add("pdfs*")
         local_repo.git.add("papers*")
         local_repo.git.add("references.bib")
         local_repo.index.commit("Updates")
