@@ -126,7 +126,8 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         updated_record = id_setter.set_ids(
             records={"record": retrieved_record_dict},
         )
-        retrieved_record_dict = updated_record["record"]
+
+        retrieved_record_dict = next(iter(updated_record.values()))
         retrieved_record_dict.pop(colrev.constants.Fields.STATUS, None)
         print(retrieved_record_dict)
         # TODO/TBD: rename pdf? update key?
