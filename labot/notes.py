@@ -119,7 +119,7 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         retrieved_record_dict.pop("language", None)
 
         id_setter = colrev.record.record_id_setter.IDSetter(
-            id_pattern=colrev.constants.ID_PATTERN.three_authors_year,
+            id_pattern=colrev.constants.IDPattern.three_authors_year,
             skip_local_index=False,
         )
         updated_record = id_setter.set_ids(
