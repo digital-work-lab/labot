@@ -76,18 +76,17 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         pdf_path = Path.cwd() / Path(f"pdfs/{missing_reference}.pdf")
         print(pdf_path.stat().st_size)
 
-        if not pdf_path.exists() or pdf_path.stat().st_size < 100:
-            print(f"Fetching {pdf_path} using Git LFS...")
-
-            try:
-                subprocess.run(
-                    ["git", "lfs", "pull", "--include", str(pdf_path)], check=True
-                )
-                print(f"Successfully fetched: {pdf_path}")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to fetch {pdf_path}. Error: {e}")
-        else:
-            print(f"File already exists and appears to be valid: {pdf_path}")
+        # if not pdf_path.exists() or pdf_path.stat().st_size < 100:
+        print(f"Fetching {pdf_path} using Git LFS...")
+        try:
+            subprocess.run(
+                ["git", "lfs", "pull", "--include", str(pdf_path)], check=True
+            )
+            print(f"Successfully fetched: {pdf_path}")
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to fetch {pdf_path}. Error: {e}")
+        # else:
+        #     print(f"File already exists and appears to be valid: {pdf_path}")
 
         with pymupdf.Document(pdf_path) as doc:
             text = doc.load_page(0).get_text()
