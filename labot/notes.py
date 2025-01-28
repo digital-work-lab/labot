@@ -6,6 +6,7 @@ import os
 import subprocess
 from pathlib import Path
 
+import colrev.constants
 import colrev.env.environment_manager
 import colrev.env.local_index
 import colrev.env.tei_parser
@@ -14,6 +15,7 @@ import colrev.loader.load_utils
 from colrev.packages.crossref.src import crossref_api
 from colrev.writer.write_utils import write_file
 from git import Repo
+import colrev.record.record_id_setter
 
 references_file = Path("references.bib")
 
@@ -116,6 +118,14 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         retrieved_record_dict.pop("curation_ID", None)
         retrieved_record_dict.pop("language", None)
 
+        id_setter = colrev.record.record_id_setter.IDSetter(
+            id_pattern=colrev.constants.ID_PATTERN.three_authors_year,
+            skip_local_index=False,
+        )
+        updated_record = id_setter.set_ids(
+            records={"record": retrieved_record_dict},
+        )
+        retrieved_record_dict = updated_record["record"]
         # TODO/TBD: rename pdf? update key?
         if missing_reference not in references:
             references[missing_reference] = retrieved_record_dict
