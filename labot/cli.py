@@ -2,7 +2,10 @@
 """Command-line interface for Labot."""
 from __future__ import annotations
 
+from pathlib import Path
+
 import click
+from git import Repo
 
 
 @click.group()
@@ -115,7 +118,9 @@ def notes(
 ) -> None:
     import labot.notes
 
-    labot.notes.check_notes()
+    local_repo = Repo(Path.cwd())
+
+    labot.notes.check_notes(local_repo=local_repo)
 
 
 @main.command  # (help_priority=1)
