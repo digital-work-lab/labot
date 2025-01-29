@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
     template_vars = {}
 
-    env = Environment(loader=FileSystemLoader("templates"))
+    env = Environment(loader=FileSystemLoader("labot/templates"))
     template = env.get_template("course_evaluation_issue.md")
 
     for email in new_emails:
