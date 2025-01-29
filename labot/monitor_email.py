@@ -8,6 +8,8 @@ from exchangelib import Account
 from exchangelib import Credentials
 from exchangelib import DELEGATE
 from github import Github
+from jinja2 import Environment
+from jinja2 import FileSystemLoader
 
 
 def create_github_issue(repo, title, body, assignees=None):
@@ -60,10 +62,13 @@ if __name__ == "__main__":
     if not token:
         raise ValueError("GITHUB_TOKEN environment variable must be set.")
 
-    # Authenticate with GitHub
     g = Github(token)
-    # Access the repository
     repo = g.get_repo(handbook_repo)
+
+    template_vars = {}
+
+    env = Environment(loader=FileSystemLoader("templates"))
+    template = env.get_template("course_evaluation_issue.md")
 
     for email in new_emails:
         if email.subject.startswith("Evaluationsauswertung zur Veranstaltung"):
@@ -73,11 +78,15 @@ if __name__ == "__main__":
                 print(f"Issue with title '{title}' already exists. Skipping creation.")
                 continue
 
-            body = (
-                "📧 We received the evaluation results.\n"
-                "- [ ] Upload them [here](https://github.com/digital-work-lab/handbook/tree/main/assets/evaluations)\n"
-                "- [ ] Add them to the [courses](https://github.com/digital-work-lab/handbook/tree/main/_courses).\n"
-            )
+            # body = (
+            #     "📧 We received the evaluation results.\n"
+            #     "- [ ] Upload the PDF [here](https://github.com/digital-work-lab/handbook/tree/main/assets/evaluations)\n\n"
+            #     "Add them to the [courses](https://github.com/digital-work-lab/handbook/tree/main/_courses):\n"
+            #     "- [ ] Add participation and overall score to _data/data.json (badges will be updated automatically)\n"
+            #     "- [ ] Add student comments to the page of evaluations\n"
+            #     "- [ ] Add suggestions for improvement to the issue\n"
+            # )
+            body = template.render(template_vars)
             assignees = ["geritwagner"]
 
             create_github_issue(repo, title, body, assignees)
