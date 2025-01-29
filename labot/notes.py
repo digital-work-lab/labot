@@ -20,7 +20,7 @@ from colrev.writer.write_utils import write_file
 from git import Actor
 from git import Repo
 from jinja2 import Environment
-from jinja2 import FileSystemLoader
+from jinja2 import PackageLoader
 
 references_file = Path("references.bib")
 event_name = os.getenv("GITHUB_EVENT_NAME")
@@ -61,8 +61,8 @@ def create_paper_summary(missing_paper_summary: dict, references: dict) -> None:
         ):
             matching_connections.append(concept.stem)
 
-    env = Environment(loader=FileSystemLoader("labot/templates"))
-    template = env.get_template("paper_summary.md.j2")
+    env = Environment(loader=PackageLoader("labot", "templates"))
+    template = env.get_template("literature_note.md.j2.md")
 
     with open(paper_summary, "w") as file:
 
