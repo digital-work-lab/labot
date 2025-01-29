@@ -78,14 +78,6 @@ if __name__ == "__main__":
                 print(f"Issue with title '{title}' already exists. Skipping creation.")
                 continue
 
-            # body = (
-            #     "📧 We received the evaluation results.\n"
-            #     "- [ ] Upload the PDF [here](https://github.com/digital-work-lab/handbook/tree/main/assets/evaluations)\n\n"
-            #     "Add them to the [courses](https://github.com/digital-work-lab/handbook/tree/main/_courses):\n"
-            #     "- [ ] Add participation and overall score to _data/data.json (badges will be updated automatically)\n"
-            #     "- [ ] Add student comments to the page of evaluations\n"
-            #     "- [ ] Add suggestions for improvement to the issue\n"
-            # )
             body = template.render(template_vars)
             assignees = ["geritwagner"]
 
