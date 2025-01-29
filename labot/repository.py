@@ -527,7 +527,8 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
 
             if not validate_structure(content, expected_title):
                 errors.append(
-                    f"File {paper_file} does not match the expected structure."
+                    f"File {paper_file} does not match the expected structure:\n\n"
+                    "https://github.com/digital-work-lab/labot/blob/main/labot/templates/literature_note.md.j2.md?plain=1"
                 )
 
         if errors:
