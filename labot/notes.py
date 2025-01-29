@@ -13,12 +13,21 @@ import colrev.env.tei_parser
 import colrev.exceptions as colrev_exceptions
 import colrev.loader.load_utils
 import colrev.record.record_id_setter
+import inquirer
 from colrev.constants import RecordState
 from colrev.packages.crossref.src import crossref_api
 from colrev.writer.write_utils import write_file
+from git import Actor
 from git import Repo
+from jinja2 import Environment
+from jinja2 import FileSystemLoader
 
 references_file = Path("references.bib")
+event_name = os.getenv("GITHUB_EVENT_NAME")
+# tbd. whether the check is adequate
+local_mode = event_name is None
+
+labot_actor = Actor("digital-work-labot", "digital-work-labot@users.noreply.github.com")
 
 
 def get_missing_references(pdfs: list, references: dict) -> list:
@@ -52,19 +61,29 @@ def create_paper_summary(missing_paper_summary: dict, references: dict) -> None:
         ):
             matching_connections.append(concept.stem)
 
-    with open(paper_summary, "w") as f:
-        f.write(f"# {paper_metadata['title']}\n\n")
-        f.write(f"## Abstract\n\n{paper_metadata.get('abstract', 'no-abstract')}\n\n")
-        f.write("<Core takeaways from the research>\n\n")
-        if matching_connections:
-            f.write("## Connections\n\n")
-            for connection in matching_connections:
-                f.write(f"- [[{connection}]]\n")
-            f.write("- [ ] Add other connections manually\n")
-        else:
-            f.write(
-                "## Connections\n\n<Links to overarching concepts from the concepts/ directory>"
-            )
+    env = Environment(loader=FileSystemLoader("labot/templates"))
+    template = env.get_template("paper_summary.md.j2")
+
+    with open(paper_summary, "w") as file:
+
+        rendered_content = template.render(
+            paper_metadata=paper_metadata,
+            matching_connections=matching_connections,
+        )
+        file.write(rendered_content)
+
+        # f.write(f"# {paper_metadata['title']}\n\n")
+        # f.write(f"## Abstract\n\n{paper_metadata.get('abstract', 'no-abstract')}\n\n")
+        # f.write("<Core takeaways from the research>\n\n")
+        # if matching_connections:
+        #     f.write("## Connections\n\n")
+        #     for connection in matching_connections:
+        #         f.write(f"- [[{connection}]]\n")
+        #     f.write("- [ ] Add other connections manually\n")
+        # else:
+        #     f.write(
+        #         "## Connections\n\n<Links to overarching concepts from the concepts/ directory>"
+        #     )
 
 
 def import_missing_references(missing_references: list, references: dict) -> None:
@@ -77,14 +96,15 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         print(f"Extracting {missing_reference}")
         pdf_path = Path.cwd() / Path(f"pdfs/{missing_reference}.pdf")
 
-        print(f"Fetching {pdf_path} using Git LFS...")
-        try:
-            subprocess.run(
-                ["git", "lfs", "pull", "--include", str(pdf_path)], check=True
-            )
-            print(f"Successfully fetched: {pdf_path}")
-        except subprocess.CalledProcessError as e:
-            print(f"Failed to fetch {pdf_path}. Error: {e}")
+        if not local_mode:
+            print(f"Fetching {pdf_path} using Git LFS...")
+            try:
+                subprocess.run(
+                    ["git", "lfs", "pull", "--include", str(pdf_path)], check=True
+                )
+                print(f"Successfully fetched: {pdf_path}")
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to fetch {pdf_path}. Error: {e}")
 
         try:
             colrev_pdf_id = colrev.record.record_identifier.get_colrev_pdf_id(pdf_path)
@@ -128,7 +148,7 @@ def import_missing_references(missing_references: list, references: dict) -> Non
 
         retrieved_record_dict = next(iter(updated_record.values()))
         retrieved_record_dict.pop(colrev.constants.Fields.STATUS, None)
-        print(retrieved_record_dict)
+
         if "ID" not in retrieved_record_dict:
             retrieved_record_dict["ID"] = missing_reference
 
@@ -151,16 +171,11 @@ def import_missing_references(missing_references: list, references: dict) -> Non
             print(f"Renamed file: {pdf_path} -> {new_file}")
         except Exception as e:
             print(f"Error renaming file: {e}")
-            break
-
-        break  # TODO : tbd: add all or selected?
 
     write_file(records_dict=references, filename=references_file)
 
 
 def check_notes(local_repo: Repo = None) -> None:
-
-    event_name = os.getenv("GITHUB_EVENT_NAME")
 
     pdfs = list(Path("pdfs").iterdir())
     papers = list(Path("papers").iterdir())
@@ -178,15 +193,46 @@ def check_notes(local_repo: Repo = None) -> None:
     for missing_paper_summary in missing_paper_summaries:
         create_paper_summary(missing_paper_summary, references)
 
+    if not missing_references and not missing_paper_summaries:
+        return
+
+    if local_mode and local_repo.active_branch.name == "main":
+        # use inquirer library and ask to switch to a new branch
+        # Ask user which branch to switch to
+        branch_choices = (
+            missing_paper_summaries + missing_references + ["Create new branch"]
+        )
+        questions = [
+            inquirer.List(
+                "branch",
+                message="Select the branch to work on",
+                choices=list(set(branch_choices)),
+            )
+        ]
+
+        answers = inquirer.prompt(questions)
+
+        if answers:
+            selected_branch = answers["branch"]
+            if selected_branch == "Create new branch":
+                selected_branch = input("Enter the name of the new branch: ")
+                local_repo.git.checkout("main")
+                local_repo.git.checkout("-b", selected_branch)
+                print(f"Created and switched to branch '{selected_branch}'")
+            # Switch to the selected branch
+            local_repo.git.checkout("-b", selected_branch)
+            print(f"Switched to branch '{selected_branch}'")
+        else:
+            print("No branch selected.")
+
+    assert local_repo
+    local_repo.git.add("pdfs*")
+    local_repo.git.add("papers*")
+    local_repo.git.add("references.bib")
+    local_repo.index.commit(
+        "Prepare paper summaries 🚀", author=labot_actor, committer=labot_actor
+    )
+
     if event_name == "pull_request":
-        assert local_repo
-        local_repo.git.add("pdfs*")
-        local_repo.git.add("papers*")
-        local_repo.git.add("references.bib")
-        local_repo.index.commit("Prepared paper summaries 🚀")
         origin = local_repo.remotes.origin
         origin.push()
-
-
-if __name__ == "__main__":
-    check_notes()
