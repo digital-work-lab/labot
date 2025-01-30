@@ -455,13 +455,10 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
 
             # Note: trigger on status changes because this is what users are aware of
             if paper.just_published():
-
+                template = labot.utils.get_template("paper_published_issue.md.j2")
                 issue = self.github_repo.create_issue(
                     title="Paper published",
-                    body="Great work 🎊🍾🍀\n"
-                    "Here is the improvement, publication and dissemination checklist:\n"
-                    "- [ ] update output.bib, link PDF\n"
-                    "- [ ] add to ORCID, ....\n",
+                    body=template.render(),
                     assignee="geritwagner",
                 )
                 print(f"Issue created: {issue.html_url}")
