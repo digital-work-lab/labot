@@ -166,8 +166,8 @@ def import_missing_references(missing_references: list, references: dict) -> Non
             pdf_path.rename(new_file)
             if note_file.exists():
                 note_file.rename(summary_file)
-
-            print(f"Renamed file: {pdf_path} -> {new_file}")
+            if pdf_path != new_file:
+                print(f"Renamed file: {pdf_path} -> {new_file}")
         except Exception as e:
             print(f"Error renaming file: {e}")
 

@@ -198,7 +198,9 @@ class Thesis:
         template = labot.utils.get_template("thesis_inactivity_issue.md.j2")
 
         github_repo.create_issue(
-            title=issue_title, body=template.render(self.to_dict()), assignee="geritwagner"
+            title=issue_title,
+            body=template.render(self.to_dict()),
+            assignee="geritwagner",
         )
 
     def notify_close_to_submission(self, github_repo: Github) -> None:
@@ -222,7 +224,9 @@ class Thesis:
         template = labot.utils.get_template("thesis_close_to_submission_issue.md.j2")
 
         github_repo.create_issue(
-            title=issue_title, body=template.render(self.to_dict()), assignee="geritwagner"
+            title=issue_title,
+            body=template.render(self.to_dict()),
+            assignee="geritwagner",
         )
 
 
