@@ -499,6 +499,8 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
 
             labot.thesis.generate_gantt(theses)
 
+            labot.thesis.create_issue_accept_thesis_supervision(self.github_repo)
+
     def _check_paper_files(self, paper_files: list, references: dict) -> None:
         """Check the paper files."""
 
