@@ -8,8 +8,8 @@ from exchangelib import Account
 from exchangelib import Credentials
 from exchangelib import DELEGATE
 from github import Github
-
-import labot.utils
+from jinja2 import Environment
+from jinja2 import FileSystemLoader
 
 
 def create_github_issue(repo, title, body, assignees=None):
@@ -67,7 +67,8 @@ if __name__ == "__main__":
 
     template_vars = {}
 
-    template = labot.utils.get_template("course_evaluation_issue.md.j2")
+    env = Environment(loader=FileSystemLoader("labot/templates"))
+    template = env.get_template("course_evaluation_issue.md.j2")
 
     for email in new_emails:
         if email.subject.startswith("Evaluationsauswertung zur Veranstaltung"):
