@@ -450,25 +450,26 @@ def generate_gantt(theses: list) -> None:
     print("Gantt chart generated and saved as gantt_chart.md")
 
 
-def next_bimonth_date() -> datetime:
+def previous_bimonth_date() -> datetime:
     today = datetime.today()
     current_year = today.year
     current_month = today.month
 
     # Define bi-monthly start dates
     bi_months = [2, 4, 6, 8, 10, 12]  # Feb, Apr, Jun, Aug, Oct, Dec
-    next_month = next((m for m in bi_months if m > current_month), bi_months[0])
+    prev_month = next(
+        (m for m in reversed(bi_months) if m < current_month), bi_months[-1]
+    )
 
-    # If we wrapped around to the next year
-    next_year = current_year if next_month > current_month else current_year + 1
+    # If we wrapped around to the previous year
+    prev_year = current_year if prev_month < current_month else current_year - 1
 
-    return datetime(next_year, next_month, 1)
+    return datetime(prev_year, prev_month, 1)
 
 
 def create_issue_accept_thesis_supervision(github_repo: Github) -> None:
 
-    # isse with date (bi-monthly) - for the next upcoming month: eb-01, Apr-01, Jun-01, Aug-01, Oct-01, Dec-01
-    next_month = next_bimonth_date()
+    next_month = previous_bimonth_date()
 
     issue_title = f"[thesis-supervision-decisions]: {next_month.strftime('%Y-%m')}"
     for issue in github_repo.get_issues(state="all"):
