@@ -188,8 +188,6 @@ class Thesis:
         commits = github_repo.get_commits(path=str(filename))
         last_commit = commits[0]
         last_modified = last_commit.commit.committer.date
-        # file = github_repo.get_contents(str(filename))
-        last_modified = datetime.strptime(last_modified, "%a, %d %b %Y %H:%M:%S %Z")
         days_since_last_modified = (datetime.now() - last_modified).days
         print(days_since_last_modified)
         if days_since_last_modified < 45:
