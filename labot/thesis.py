@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import webbrowser
 from datetime import date
+from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
 
 import inquirer
@@ -81,6 +83,98 @@ class Thesis:
             "supervisor": self.supervisor,
             "title": self.title,
         }
+
+    def generate_gantt_chart_for_student(self) -> None:
+        print(f"Generating Gantt chart for {self.student}")
+        gantt_chart = [
+            "gantt",
+            f"    title Progress, {self.student}",
+            "    dateFormat  YYYY-MM-DD",
+        ]
+
+        registration_date = datetime.strptime(self.date_of_registration, "%Y-%m-%d")
+        work_end_date = datetime.strptime(self.deadline_submission, "%Y-%m-%d")
+        work_time_days = (work_end_date - registration_date).days
+
+        # Registration milestone
+        gantt_chart.append("    section Registration")
+        gantt_chart.append(f"    Registration: milestone, {self.date_of_registration},")
+
+        # Work progress section
+        gantt_chart.append("    section Work Progress")
+
+        if datetime.now() > work_end_date:
+            gantt_chart.append(
+                f"    Work Time ({self.work_time_months} months): done, {self.date_of_registration}, {work_time_days}d"
+            )
+        else:
+            gantt_chart.append(
+                f"    Work Time ({self.work_time_months} months): active, {self.date_of_registration}, {work_time_days}d"
+            )
+
+        # Actual submission milestone
+        if self.date_of_actual_submission:
+            submission_date = datetime.strptime(
+                self.date_of_actual_submission, "%Y-%m-%d"
+            )
+            gantt_chart.append(
+                f"    Actual Submission: milestone, {submission_date.strftime('%Y-%m-%d')}, 1d"
+            )
+        else:
+            submission_date = work_end_date
+            gantt_chart.append(
+                f"    Expected Submission: milestone, {submission_date.strftime('%Y-%m-%d')}, 1d"
+            )
+
+        # Review process section
+        gantt_chart.append("    section Review Process")
+
+        review_start_date = submission_date + timedelta(days=1)
+        review_period_days = 90
+        review_end_date = review_start_date + timedelta(days=review_period_days)
+
+        if datetime.now() > review_end_date:
+            gantt_chart.append(
+                f"    Review period: done, {review_start_date.strftime('%Y-%m-%d')}, {review_period_days}d"
+            )
+        else:
+            gantt_chart.append(
+                f"    Review period: active, {review_start_date.strftime('%Y-%m-%d')}, {review_period_days}d"
+            )
+
+        if self.date_review_created:
+            review_created_date = datetime.strptime(
+                self.date_review_created, "%Y-%m-%d"
+            )
+            gantt_chart.append(
+                f"    Review Created: milestone, {review_created_date.strftime('%Y-%m-%d')}, 1d"
+            )
+        else:
+            gantt_chart.append(
+                f"    Expected Review Completion: milestone, {review_end_date.strftime('%Y-%m-%d')}, 1d"
+            )
+
+        print("\n".join(gantt_chart))
+        # update gatt chart in self.filename (replace existing mermai)
+
+        # Update Gantt chart in file
+        filename = Path("theses") / self.filename
+        with open(filename) as file:
+            lines = file.readlines()
+
+        # Replace existing Mermaid section
+        with open(filename, "w") as file:
+            in_mermaid_block = False
+            for line in lines:
+                if line.strip() == "```mermaid":
+                    in_mermaid_block = True
+                    file.write(line)
+                    file.write("\n".join(gantt_chart) + "\n")
+                elif line.strip() == "```" and in_mermaid_block:
+                    in_mermaid_block = False
+                    file.write(line)  # Add closing code block
+                elif not in_mermaid_block:
+                    file.write(line)
 
 
 def get_thesis() -> Thesis:
@@ -255,3 +349,49 @@ date_review_created: '{thesis.date_review_created}'
 
     # Update the file
     thesis_file.write_text(yaml_header + thesis_content)
+
+
+def generate_gantt(theses: list) -> None:
+    """Generate a Gantt chart for all active theses."""
+
+    active_theses = [thesis for thesis in theses if thesis.status != "archived"]
+    sorted_theses = sorted(
+        active_theses,
+        key=lambda x: datetime.strptime(x.date_of_registration, "%Y-%m-%d"),
+    )
+    gantt_chart = ["gantt", "    title Active Theses", "    dateFormat  YYYY-MM-DD"]
+
+    for thesis in sorted_theses:
+        gantt_chart.append(f"    section {thesis.student} ({thesis.student_id})")
+
+        registration_date = datetime.strptime(thesis.date_of_registration, "%Y-%m-%d")
+        work_end_date = datetime.strptime(thesis.deadline_submission, "%Y-%m-%d")
+        work_time_days = (work_end_date - registration_date).days
+
+        if datetime.now() > work_end_date:
+            gantt_chart.append(
+                f"    {thesis.work_time_months} months: done, {thesis.date_of_registration}, {work_time_days}d"
+            )
+        else:
+            gantt_chart.append(
+                f"    {thesis.work_time_months} months: active, {thesis.date_of_registration}, {work_time_days}d"
+            )
+
+        if thesis.date_of_actual_submission:
+            submission_date = datetime.strptime(
+                thesis.date_of_actual_submission, "%Y-%m-%d"
+            )
+            # grading_end_date = submission_date + timedelta(days=90)
+            gantt_chart.append(
+                f"    Grading: crit, {submission_date.strftime('%Y-%m-%d')}, 90d"
+            )
+
+    print("\n".join(gantt_chart))
+
+    with open("gantt_chart.md", "w") as file:
+        file.write("# Gantt Chart\n")
+        file.write("```mermaid\n")
+        file.write("\n".join(gantt_chart))
+        file.write("\n```\n")
+
+    print("Gantt chart generated and saved as gantt_chart.md")

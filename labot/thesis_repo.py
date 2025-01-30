@@ -632,7 +632,3 @@ class ThesisRepo:
                 break
 
             # TODO : if len(comments) == 1...
-
-
-if __name__ == "__main__":
-    print("Nothing")

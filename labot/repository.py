@@ -492,6 +492,14 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
         #     print("No 'reset_course.yml' workflow found.")
         #     self.VALID = False
 
+        if self.REPO_NAME == "theses-confidential":
+            theses = labot.thesis.load_theses()
+
+            for thesis in theses:
+                thesis.generate_gantt_chart_for_student(thesis)
+
+            labot.thesis.generate_gantt(theses)
+
     def _check_paper_files(self, paper_files: list, references: dict) -> None:
         """Check the paper files."""
 
@@ -528,7 +536,8 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
             if not validate_structure(content, expected_title):
                 errors.append(
                     f"File {paper_file} does not match the expected structure:\n\n"
-                    "https://github.com/digital-work-lab/labot/blob/main/labot/templates/literature_note.md.j2.md?plain=1"
+                    "https://github.com/digital-work-lab/labot/blob/main/labot/"
+                    "templates/literature_note.md.j2.md?plain=1"
                 )
 
         if errors:
