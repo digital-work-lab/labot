@@ -201,6 +201,30 @@ class Thesis:
             title=issue_title, body=template, assignee="geritwagner"
         )
 
+    def notify_close_to_submission(self, github_repo: Github) -> None:
+        if self.status != "registered":
+            return
+        print("Notification for close to submission")
+
+        submission_date = datetime.strptime(self.deadline_submission, "%Y-%m-%d")
+        days_until_submission = (submission_date - datetime.now()).days
+        print(days_until_submission)
+        if days_until_submission > 14:
+            return
+
+        print(f"Notify {self.student} for close to submission")
+        issue_title = f"Thesis Close to Submission: {self.student}"
+        # return if an open/closed issue exists wit hthe issue_title
+        for issue in github_repo.get_issues(state="all"):
+            if issue.title == issue_title:
+                return
+
+        template = labot.utils.get_template("thesis_close_to_submission_issue.md.j2.md")
+
+        github_repo.create_issue(
+            title=issue_title, body=template, assignee="geritwagner"
+        )
+
 
 def get_thesis() -> Thesis:
     # Load theses from YAML files
