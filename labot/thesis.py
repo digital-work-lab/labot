@@ -185,7 +185,7 @@ class Thesis:
             return
         # get last modified date of the file
         filename = Path("theses") / self.filename
-        file = github_repo.get_contents(filename)
+        file = github_repo.get_contents(str(filename))
         last_modified = file.last_modified
         days_since_last_modified = (datetime.now() - last_modified).days
         print(days_since_last_modified)
