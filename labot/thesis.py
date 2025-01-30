@@ -180,6 +180,7 @@ class Thesis:
                     file.write(line)
 
     def notify_for_inactive_students(self, github_repo: Github) -> None:
+        print('Notification for inactive students')
         if self.status != "registered":
             return
         # get last modified date of the file
@@ -187,6 +188,7 @@ class Thesis:
         file = github_repo.get_contents(filename)
         last_modified = file.last_modified
         days_since_last_modified = (datetime.now() - last_modified).days
+        print(days_since_last_modified)
         if days_since_last_modified < 45:
             return
         print(f"Notify {self.student} for inactivity")
