@@ -11,7 +11,10 @@ from pathlib import Path
 import inquirer
 import yamale
 import yaml
+from github import Github
 from mailmerge import MailMerge
+
+import labot.utils
 
 # flake8: noqa: E501
 
@@ -175,6 +178,24 @@ class Thesis:
                     file.write(line)  # Add closing code block
                 elif not in_mermaid_block:
                     file.write(line)
+
+    def notify_for_inactive_students(self, github_repo: Github) -> None:
+        if self.status != "registered":
+            return
+        # get last modified date of the file
+        filename = Path("theses") / self.filename
+        file = github_repo.get_contents(filename)
+        last_modified = file.last_modified
+        days_since_last_modified = (datetime.now() - last_modified).days
+        if days_since_last_modified < 45:
+            return
+        print(f"Notify {self.student} for inactivity")
+        issue_title = f"Thesis Inactivity: {self.student}"
+        template = labot.utils.get_template("thesis_inactivity_issue.md.j2.md")
+
+        github_repo.create_issue(
+            title=issue_title, body=template, assignee="geritwagner"
+        )
 
 
 def get_thesis() -> Thesis:

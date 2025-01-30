@@ -497,6 +497,7 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
 
             for thesis in theses:
                 thesis.generate_gantt_chart_for_student(thesis)
+                thesis.notify_for_inactive_students(self.github_repo)
 
             labot.thesis.generate_gantt(theses)
 

@@ -19,8 +19,8 @@ from colrev.packages.crossref.src import crossref_api
 from colrev.writer.write_utils import write_file
 from git import Actor
 from git import Repo
-from jinja2 import Environment
-from jinja2 import PackageLoader
+
+import labot.utils
 
 references_file = Path("references.bib")
 event_name = os.getenv("GITHUB_EVENT_NAME")
@@ -61,8 +61,7 @@ def create_paper_summary(missing_paper_summary: dict, references: dict) -> None:
         ):
             matching_connections.append(concept.stem)
 
-    env = Environment(loader=PackageLoader("labot", "templates"))
-    template = env.get_template("literature_note.md.j2.md")
+    template = labot.utils.get_template("literature_note.md.j2.md")
 
     with open(paper_summary, "w") as file:
 
