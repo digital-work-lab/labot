@@ -471,7 +471,6 @@ def create_issue_accept_thesis_supervision(github_repo: Github) -> None:
     next_month = next_bimonth_date()
 
     issue_title = f"[thesis-supervision-decisions]: {next_month.strftime('%Y-%m')}"
-    issue_title = ""
     for issue in github_repo.get_issues(state="all"):
         if issue.title == issue_title:
             return
