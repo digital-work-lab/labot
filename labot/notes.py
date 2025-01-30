@@ -61,7 +61,7 @@ def create_paper_summary(missing_paper_summary: dict, references: dict) -> None:
         ):
             matching_connections.append(concept.stem)
 
-    template = labot.utils.get_template("literature_note.md.j2.md")
+    template = labot.utils.get_template("literature_note.md.j2")
 
     with open(paper_summary, "w") as file:
 

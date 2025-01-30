@@ -68,7 +68,7 @@ if __name__ == "__main__":
     template_vars = {}
 
     env = Environment(loader=FileSystemLoader("labot/templates"))
-    template = env.get_template("course_evaluation_issue.md")
+    template = env.get_template("course_evaluation_issue.md.j2")
 
     for email in new_emails:
         if email.subject.startswith("Evaluationsauswertung zur Veranstaltung"):
