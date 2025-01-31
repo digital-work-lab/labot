@@ -81,6 +81,7 @@ def thesis_registration_accept(
 
     file_name = extract_file_name(issue.body)
     if not file_name:
+        print(issue.body)
         issue.create_comment(
             "I'm sorry, I couldn't find the file name in the issue body."
         )

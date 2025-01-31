@@ -242,7 +242,7 @@ Triggered via [e-mail monitor](https://github.com/digital-work-lab/labot/actions
 
 🔗 **Branch:** [{branch}](https://github.com/digital-work-lab/theses-confidential/tree/{branch})
 
-**File:**: {target_path}
+**File:** {target_path}
 
 TODO : wait for written/signed topic confirmation
 
