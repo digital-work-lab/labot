@@ -9,7 +9,6 @@ from docx import Document
 from exchangelib import Account
 from exchangelib import Credentials
 from exchangelib import DELEGATE
-from exchangelib import Message
 from github import Github
 from jinja2 import Environment
 from jinja2 import FileSystemLoader
@@ -145,7 +144,20 @@ def start_thesis_registration(account, email):
         # TODO : rename
         # new_filename = f"{registration['name']}_{registration['student_id']}.docx"
 
+        target_path = f"registrations/{file_path}"
         # upload word file in "digital-work-lab/theses-confidential" repository
+        repo = g.get_repo("digital-work-lab/theses-confidential")
+        # switch to branch with the student's name
+        repo.checkout({registration["student"]}, create=True)
+        repo.create_file(
+            target_path,
+            "Upload registration file",
+            open(file_path).read(),
+            target_path,
+            branch="main",
+        )
+        repo.push()
+
         # Check if file already exists in the repo
         # existing_file = repo.get_contents(TARGET_PATH)
 
@@ -160,52 +172,49 @@ def start_thesis_registration(account, email):
 
         # email confirmation: GW auf cc
 
-        # title = email.subject
-        # if issue_exists(repo, title):
-        #     print(f"Issue with title '{title}' already exists. Skipping creation.")
-        #     return
+        title = email.subject
+        if issue_exists(repo, title):
+            print(f"Issue with title '{title}' already exists. Skipping creation.")
+            return
 
-        # body = """
-        # **Thesis Registration**
+        body = f"""
+        **Thesis Registration**
 
-        # **Student Name:**
-        # **Student ID:**
-        # **Thesis Title:**
-        # **Thesis Type:**
-        # **Supervisor:**
-        # **Second Supervisor:**
-        # **Start Date:**
-        # **End Date:**
-        # **Status:**
-        # **Grade:**
-        # **Notes:**
-        # """
-        # assignees = ["geritwagner"]
+        **Student Name:** {registration['student']}
+        **Student ID:** {registration['student_id']}
+        **Thesis Title:** {registration['Topic']}
+        **Date:** {registration['Date']}
+        **Work Time:** {registration['Work Time']}
 
-        # try:
-        #     issue = repo.create_issue(title=title, body=body, assignees=assignees)
+Branch: https://github.com/digital-work-lab/theses-confidential/tree/{registration['student']}
 
-        #     print(f"Issue created successfully! URL: {issue.html_url}")
-        # except Exception as e:
-        #     print(f"Failed to create issue: {e}")
+"""
+        assignees = ["geritwagner"]
+
+        try:
+            issue = repo.create_issue(title=title, body=body, assignees=assignees)
+
+            print(f"Issue created successfully! URL: {issue.html_url}")
+        except Exception as e:
+            print(f"Failed to create issue: {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
 
-    body = f"""
-    **Thesis Registration**
+    # body = f"""
+    # **Thesis Registration**
 
-    **Student Name:** {registration['student']}
-    **Student ID:** {registration['student_id']} """
+    # **Student Name:** {registration['student']}
+    # **Student ID:** {registration['student_id']} """
 
-    # send a report
-    email_message = Message(
-        account=account,
-        folder=account.sent,
-        subject=f"AW: {email.subject}",
-        body=body,
-        to_recipients=["gerit.wagner@uni-bamberg.de"],
-    )
-    email_message.send()
+    # # send a report
+    # email_message = Message(
+    #     account=account,
+    #     folder=account.sent,
+    #     subject=f"AW: {email.subject}",
+    #     body=body,
+    #     to_recipients=["gerit.wagner@uni-bamberg.de"],
+    # )
+    # email_message.send()
 
 
 if __name__ == "__main__":
