@@ -159,24 +159,26 @@ def thesis_registration_accept(
 
     template = labot.utils.get_template("theses_details.md.j2")
     content = template.render(registration=registration)
+    thesis_filename = f"theses/{next_number}_{registration['student'].replace(',', '').replace(' ', '_')}.md"
     github_repo.create_file(
-        f"theses/{next_number}_{registration['student'].replace(',', '').replace(' ', '_')}.md",
+        thesis_filename,
         "Thesis registration",
         content=content,
         branch=branch_name,
     )
 
+    issue_number = issue.number
     # create pull request
     pr = github_repo.create_pull(
         title=f"Thesis registration for {registration['student']}",
-        body=f"Please check the registration details for {registration['student']} and merge this pull request.",
+        body=f"Please check the registration details for {registration['student']} and merge this pull request.\n\n🔗 **Issue:** [#{issue_number}](https://github.com/digital-work-lab/theses-confidential/issues/{issue_number})",
         base="main",
         head=branch_name,
     )
-    issue_number = issue.number
-    pr.add_to_labels(f"linked-to-issue-{issue_number}")
+
+    pull_request_link = pr.html_url
     issue.create_comment(
-        f"I created the [thesis file](https://github.com/digital-work-lab/theses-confidential/blob/{branch_name}/theses/{file_name}?plain=1) 📚\n\nPlease check and merge the pull request:"
+        f"I created the [thesis file](https://github.com/digital-work-lab/theses-confidential/blob/{branch_name}/{thesis_filename}?plain=1) 📚\n\nPlease check and merge the [pull request]({pull_request_link})"
     )
 
 
