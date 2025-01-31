@@ -142,11 +142,18 @@ def start_thesis_registration(account, email):
         # TODO : validate e-mail (sender: @stud-uni-bamberg.de)
         registration = {"repository": "NA", "word_file": file_path}
         registration = append_infos_from_word(registration)
+
+        issue_title = f"[Thesis Registration]: {registration['student']}"
+        repo = g.get_repo("digital-work-lab/theses-confidential")
+        if issue_exists(repo, issue_title):
+            print(
+                f"Issue with title '{issue_title}' already exists. Skipping creation."
+            )
+            return
         # TODO : validate
         # TODO : rename
         # new_filename = f"{registration['name']}_{registration['student_id']}.docx"
 
-        repo = g.get_repo("digital-work-lab/theses-confidential")
         branch = registration["student"].lower().replace(" ", "_").replace(",", "")
         target_path = (
             f"registrations/{datetime.now().strftime('%Y-%m-%d')}{branch}.docx"
@@ -223,11 +230,6 @@ def start_thesis_registration(account, email):
 
         # email confirmation: GW auf cc
 
-        title = f"[Thesis Registration]: {registration['student']}"
-        if issue_exists(repo, title):
-            print(f"Issue with title '{title}' already exists. Skipping creation.")
-            return
-
         body = f"""**Thesis Registration**
 
 Triggered via [e-mail monitor](https://github.com/digital-work-lab/labot/actions/workflows/monitor_inbox.yml).
@@ -250,7 +252,7 @@ TODO : write command ("@digital-work-labot accept thesis registration") to confi
         assignees = ["geritwagner"]
 
         try:
-            issue = repo.create_issue(title=title, body=body, assignees=assignees)
+            issue = repo.create_issue(title=issue_title, body=body, assignees=assignees)
             print(f"Issue created successfully! URL: {issue.html_url}")
             # Note: currently not creating a pull request -> users should merge via labot command
         except Exception as e:
