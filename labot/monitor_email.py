@@ -147,17 +147,13 @@ def start_thesis_registration(account, email):
         target_path = f"registrations/{file_path}"
         # upload word file in "digital-work-lab/theses-confidential" repository
         repo = g.get_repo("digital-work-lab/theses-confidential")
-        # switch to branch with the student's name
-        repo.checkout({registration["student"]}, create=True)
         repo.create_file(
             target_path,
             "Upload registration file",
             open(file_path).read(),
             target_path,
-            branch="main",
+            branch=registration["student"],
         )
-        repo.push()
-
         # Check if file already exists in the repo
         # existing_file = repo.get_contents(TARGET_PATH)
 
