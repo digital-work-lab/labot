@@ -245,9 +245,13 @@ Triggered via [e-mail monitor](https://github.com/digital-work-lab/labot/actions
 
 **File:** {target_path}
 
-TODO : wait for written/signed topic confirmation
+Please: wait for written/signed topic confirmations.
 
-TODO : write command ("@digital-work-labot accept thesis registration") to confirm the registration
+Once they are availabe, complete the process by running:
+
+```
+@digital-work-labot accept thesis registration
+```
 
 """
         assignees = ["geritwagner"]

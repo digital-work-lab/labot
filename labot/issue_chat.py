@@ -150,7 +150,6 @@ def thesis_registration_accept(
         deadline_submission + timedelta(days=90)
     ).strftime("%Y-%m-%d")
 
-    issue.create_comment("I will register your thesis 📚")
     # get the branch name from the issue body, match "https://github.com/digital-work-lab/theses-confidential/tree/..."
     # get the filenames in github_repo (theses folder)
     files = github_repo.get_contents("theses", ref=branch_name)
@@ -167,7 +166,18 @@ def thesis_registration_accept(
         branch=branch_name,
     )
 
-    # create student file in /theses
+    # create pull request
+    pr = github_repo.create_pull(
+        title=f"Thesis registration for {registration['student']}",
+        body=f"Please check the registration details for {registration['student']} and merge this pull request.",
+        base="main",
+        head=branch_name,
+    )
+    issue_number = issue.number
+    pr.add_to_labels(f"linked-to-issue-{issue_number}")
+    issue.create_comment(
+        f"I created the [thesis file](https://github.com/digital-work-lab/theses-confidential/blob/{branch_name}/theses/{file_name}?plain=1) 📚\n\nPlease check and merge the pull request:"
+    )
 
 
 def comment(local_repo: Repo, github_repo: Github, event_data: dict) -> None:
