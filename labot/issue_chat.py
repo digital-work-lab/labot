@@ -145,7 +145,7 @@ def thesis_registration_accept(
         registration["date_of_registration"], "%Y-%m-%d"
     ) + timedelta(int(registration["work_time_months"]) * 30)
     registration["deadline_submission"] = deadline_submission.strftime("%Y-%m-%d")
-    registration["work_time_days"] = registration["work_time_months"] * 30
+    registration["work_time_days"] = int(registration["work_time_months"]) * 30
     registration["expected_review_completion"] = (
         deadline_submission + timedelta(days=90)
     ).strftime("%Y-%m-%d")
@@ -155,13 +155,13 @@ def thesis_registration_accept(
     # get the filenames in github_repo (theses folder)
     files = github_repo.get_contents("theses", ref=branch_name)
     # files are 001_name.md, 002_name.md, ... - I need the next number
-    next_number = len(files) + 1
+    next_number = str(len(files) + 1).zfill(3)
     # create a new file in the github_repo
 
     template = labot.utils.get_template("theses_details.md.j2")
     content = template.render(registration=registration)
     github_repo.create_file(
-        f"theses/{next_number}_{registration['student']}.md",
+        f"theses/{next_number}_{registration['student'].replace(',', '').replace(' ', '_')}.md",
         "Thesis registration",
         content=content,
         branch=branch_name,

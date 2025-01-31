@@ -43,6 +43,7 @@ def _extract_information(text: str) -> dict:
     date_pattern_2 = r"Bamberg, den\s*([\d-]+)"
     work_time_pattern = r"(\d+)\s*Monate"
     zulassung_date_pattern = r"Die Zulassung erfolgte am:\s*(\d{2}\.\d{2}\.\d{4})"
+    degree_program_pattern = r"im Studiengang\s*([^\n]+)$"
 
     name_match = re.search(name_pattern, text)
     student_id_match = re.search(student_id_pattern, text)
@@ -56,6 +57,7 @@ def _extract_information(text: str) -> dict:
     topic_match = re.search(topic_pattern, text)
     work_time_match = re.search(work_time_pattern, text)
     zulassung_date_match = re.search(zulassung_date_pattern, text)
+    degree_program_match = re.search(degree_program_pattern, text)
 
     raw_name = name_match.group(1).strip() if name_match else None
     name = _clean_name(raw_name) if raw_name else None
@@ -65,6 +67,7 @@ def _extract_information(text: str) -> dict:
     date = re.sub(r"(\d{2})\.(\d{2})\.(\d{4})", r"\3-\2-\1", date) if date else None
     work_time = work_time_match.group(1) if work_time_match else "NA"
     zulassung_date = zulassung_date_match.group(1) if zulassung_date_match else "NA"
+    degree_program = degree_program_match.group(1) if degree_program_match else "NA"
 
     level = "bachelor" if "bachelorarbeit" in text.lower() else "master"
 
@@ -76,6 +79,7 @@ def _extract_information(text: str) -> dict:
         "work_time_months": work_time,
         "Zulassung Date": zulassung_date,
         "Level": level,
+        "degree_program": degree_program,
     }
 
 
