@@ -88,9 +88,12 @@ def thesis_registration_accept(
         )
         return
     CLONE_DIR = "/tmp/theses-confidential"
+    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+    GITHUB_REPO_URL = f"https://x-access-token:{GITHUB_TOKEN}@github.com/digital-work-lab/theses-confidential.git"
+
     if not os.path.exists(CLONE_DIR):
         Repo.clone_from(
-            "git@github.com:digital-work-lab/theses-confidential.git",
+            GITHUB_REPO_URL,
             CLONE_DIR,
             branch=branch_name,
             depth=1,
