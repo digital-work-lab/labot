@@ -180,33 +180,33 @@ def start_thesis_registration(account, email):
             else:
                 print(f"❌ Error checking/creating branch: {e}")
                 exit(1)  # Stop execution if branch creation fails
-        try:
-            # Check if the file exists
-            existing_file = repo.get_contents(target_path, ref=branch)
+        # try:
+        #     # Check if the file exists
+        #     existing_file = repo.get_contents(target_path, ref=branch)
 
-            # Update the existing file
-            repo.update_file(
-                path=target_path,
-                message="Updating registration file",
-                content=file_content,  # Base64 encoded content
-                sha=existing_file.sha,  # Required for updates
-                branch=branch,
-            )
-            print(f"✅ File updated successfully: {target_path}")
+        #     # Update the existing file
+        #     repo.update_file(
+        #         path=target_path,
+        #         message="Updating registration file",
+        #         content=file_content,  # Base64 encoded content
+        #         sha=existing_file.sha,  # Required for updates
+        #         branch=branch,
+        #     )
+        #     print(f"✅ File updated successfully: {target_path}")
 
-        except Exception as e:
-            if "404" in str(e):  # File does not exist, create it
-                print("⚠️ File not found. Uploading as a new file.")
+        # except Exception as e:
+        #     if "404" in str(e):  # File does not exist, create it
+        #         print("⚠️ File not found. Uploading as a new file.")
 
-                repo.create_file(
-                    path=target_path,
-                    message="Upload new registration file",
-                    content=file_content,  # Base64 encoded content
-                    branch=branch,
-                )
-                print(f"✅ File uploaded successfully: {target_path}")
-            else:
-                print(f"❌ Error uploading file: {e}")
+        repo.create_file(
+            path=target_path,
+            message="Upload new registration file",
+            content=file_content,  # Base64 encoded content
+            branch=branch,
+        )
+        print(f"✅ File uploaded successfully: {target_path}")
+        # else:
+        #     print(f"❌ Error uploading file: {e}")
 
         # existing_file = repo.get_contents(target_path)
 
