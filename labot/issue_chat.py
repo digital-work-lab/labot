@@ -67,7 +67,7 @@ def thesis_registration_accept(
         return None  # No match found
 
     def extract_file_name(issue_body: str) -> str:
-        match = re.search(r"\s*([\w\-\/]+\.docx)", issue_body)
+        match = re.search(r"\s*([\w\-\/_]+\.docx)", issue_body)
         if match:
             return match.group(1)
         else:
@@ -102,7 +102,7 @@ def thesis_registration_accept(
         print(f"✅ Repository already cloned: {CLONE_DIR}")
 
     # ✅ Step 2: Access the file directly
-    local_path = os.path.join(CLONE_DIR, "registrations/2025-01-31albaner_daniela.docx")
+    local_path = os.path.join(CLONE_DIR, file_name)
 
     # file_content = github_repo.get_contents(file_name, ref=branch_name)
     # decoded_content = base64.b64decode(file_content.content)
