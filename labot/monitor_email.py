@@ -147,12 +147,30 @@ def start_thesis_registration(account, email):
 
         repo = g.get_repo("digital-work-lab/theses-confidential")
         target_path = f"registrations/{file_path}"
-        branch = registration["student"]
+        branch = registration["student"].lower().replace(" ", "_").replace(",", "")
         # upload word file in "digital-work-lab/theses-confidential" repository
         with open(file_path, "rb") as f:
             file_content = base64.b64encode(f.read()).decode(
                 "utf-8"
             )  # Encode for GitHub API
+
+        try:
+            repo.get_branch(branch)  # Check if the branch exists
+            print(f"✅ Branch '{branch}' exists.")
+        except Exception as e:
+            if "404" in str(e):  # Branch does not exist, create it from 'main'
+                print(f"⚠️ Branch '{branch}' not found. Creating it from 'main'.")
+
+                # Get the latest commit SHA from the base branch
+                base_branch_ref = repo.get_branch("main")
+                repo.create_git_ref(
+                    ref=f"refs/heads/{branch}", sha=base_branch_ref.commit.sha
+                )
+
+                print(f"✅ Branch '{branch}' created successfully.")
+            else:
+                print(f"❌ Error checking/creating branch: {e}")
+                exit(1)  # Stop execution if branch creation fails
         try:
             # Check if the file exists
             existing_file = repo.get_contents(target_path, ref=branch)
