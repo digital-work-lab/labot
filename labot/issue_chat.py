@@ -1,5 +1,7 @@
 #! /usr/bin/env python3
 """Labot issue chat."""
+from pathlib import Path
+
 from git import Repo
 from github import Github
 from github import Issue
@@ -12,7 +14,8 @@ def new_semester(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
     local_repo.git.pull()
     local_repo.git.checkout("-b", "new_semester")
     # in the docs dir, iterate over md-files containing "teaching_note" in the title and replace "- [x] " with "- [ ] "
-    for file in local_repo.glob("docs/*teaching_note*.md"):
+    repo_path = Path(local_repo.working_tree_dir)  # Get the repo directory
+    for file in repo_path.glob("docs/*teaching_note*.md"):
         with open(file) as f:
             content = f.read()
         content = content.replace("- [x] ", "- [ ] ")
