@@ -43,7 +43,7 @@ def _extract_information(text: str) -> dict:
     date_pattern_2 = r"Bamberg, den\s*([\d-]+)"
     work_time_pattern = r"(\d+)\s*Monate"
     zulassung_date_pattern = r"Die Zulassung erfolgte am:\s*(\d{2}\.\d{2}\.\d{4})"
-    degree_program_pattern = r"im Studiengang\s*([^\n]+)$"
+    degree_program_pattern = r"im Studiengang\s*([^\n]+)"
 
     name_match = re.search(name_pattern, text)
     student_id_match = re.search(student_id_pattern, text)
