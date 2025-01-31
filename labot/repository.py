@@ -912,6 +912,16 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
         """Main function."""
         self._check_github_token_permissions()
 
+        if self._detect_event_type() == "issue":
+            event_path = os.getenv("GITHUB_EVENT_PATH")
+            if not event_path:
+                print("GITHUB_EVENT_PATH environment variable is not set.")
+                sys.exit(1)
+            with open(event_path) as f:
+                event_data = json.load(f)
+            labot.issue_chat.new_issue(self.local_repo, self.github_repo, event_data)
+            return
+
         if self._detect_event_type() == "issue_comment":
             event_path = os.getenv("GITHUB_EVENT_PATH")
             if not event_path:
@@ -919,7 +929,7 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
                 sys.exit(1)
             with open(event_path) as f:
                 event_data = json.load(f)
-            labot.issue_chat.main(self.local_repo, self.github_repo, event_data)
+            labot.issue_chat.comment(self.local_repo, self.github_repo, event_data)
             return
 
         # TODO : different functions for event-types? e.g.,

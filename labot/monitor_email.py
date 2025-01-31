@@ -156,7 +156,7 @@ def start_thesis_registration(account, email):
 
         branch = registration["student"].lower().replace(" ", "_").replace(",", "")
         target_path = (
-            f"registrations/{datetime.now().strftime('%Y-%m-%d')}{branch}.docx"
+            f"registrations/{datetime.now().strftime('%Y-%m-%d')}_{branch}.docx"
         )
         # upload word file in "digital-work-lab/theses-confidential" repository
         with open(file_path, "rb") as f:
