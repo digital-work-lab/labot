@@ -11,14 +11,7 @@ from github import Github
 from jinja2 import Environment
 from jinja2 import FileSystemLoader
 
-
-def create_github_issue(repo, title, body, assignees=None):
-    try:
-        issue = repo.create_issue(title=title, body=body, assignees=assignees)
-
-        print(f"Issue created successfully! URL: {issue.html_url}")
-    except Exception as e:
-        print(f"Failed to create issue: {e}")
+import labot.thesis_utils
 
 
 def issue_exists(repo, title):
@@ -34,6 +27,105 @@ def issue_exists(repo, title):
         if issue.title == title:
             return True
     return False
+
+
+def teaching_evaluations(email, repo):
+    title = email.subject
+    if issue_exists(repo, title):
+        print(f"Issue with title '{title}' already exists. Skipping creation.")
+        return
+
+    body = template.render(template_vars)
+    assignees = ["geritwagner"]
+
+    try:
+        issue = repo.create_issue(title=title, body=body, assignees=assignees)
+
+        print(f"Issue created successfully! URL: {issue.html_url}")
+    except Exception as e:
+        print(f"Failed to create issue: {e}")
+
+
+def start_thesis_registration(account, email):
+    try:
+        file_path = ""
+        # Check if the email has attachments
+        for attachment in email.attachments:
+            if hasattr(attachment, "content") and attachment.name.endswith(".docx"):
+                file_path = attachment.name
+
+                # Save the attachment
+                with open(file_path, "wb") as f:
+                    f.write(attachment.content)
+
+        if not file_path:
+            # TODO : notify via e-mail
+            return
+
+        registration = {"repository": "NA", "word_file": file_path}
+        registration = labot.thesis_utils.append_infos_from_word(registration)
+        # TODO : validate
+        # TODO : rename
+        # new_filename = f"{registration['name']}_{registration['student_id']}.docx"
+
+        # upload word file in "digital-work-lab/theses-confidential" repository
+        # Check if file already exists in the repo
+        # existing_file = repo.get_contents(TARGET_PATH)
+
+        # # Update the file
+        # repo.update_file(
+        #     TARGET_PATH,
+        #     "Updating file via GitHub Actions",
+        #     open(FILE_PATH, "r").read(),
+        #     existing_file.sha,
+        #     branch="main",  # Change to the correct branch
+        # )
+
+        # email confirmation: GW auf cc
+
+        # title = email.subject
+        # if issue_exists(repo, title):
+        #     print(f"Issue with title '{title}' already exists. Skipping creation.")
+        #     return
+
+        # body = """
+        # **Thesis Registration**
+
+        # **Student Name:**
+        # **Student ID:**
+        # **Thesis Title:**
+        # **Thesis Type:**
+        # **Supervisor:**
+        # **Second Supervisor:**
+        # **Start Date:**
+        # **End Date:**
+        # **Status:**
+        # **Grade:**
+        # **Notes:**
+        # """
+        # assignees = ["geritwagner"]
+
+        # try:
+        #     issue = repo.create_issue(title=title, body=body, assignees=assignees)
+
+        #     print(f"Issue created successfully! URL: {issue.html_url}")
+        # except Exception as e:
+        #     print(f"Failed to create issue: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+    body = f"""
+    **Thesis Registration**
+
+    **Student Name:** {registration['student']}
+    **Student ID:** {registration['student_id']} """
+
+    # send a report to gerit.wagner@uni-bamberg.de
+    account.send_email(
+        subject=f"AW: {email.subject}",
+        body=body,
+        to_recipients=["gerit.wagner@uni-bamberg.de"],
+    )
 
 
 if __name__ == "__main__":
@@ -63,7 +155,7 @@ if __name__ == "__main__":
         raise ValueError("GITHUB_TOKEN environment variable must be set.")
 
     g = Github(token)
-    repo = g.get_repo(handbook_repo)
+    handbook_repo = g.get_repo(handbook_repo)
 
     template_vars = {}
 
@@ -71,14 +163,10 @@ if __name__ == "__main__":
     template = env.get_template("course_evaluation_issue.md.j2")
 
     for email in new_emails:
-        if email.subject.startswith("Evaluationsauswertung zur Veranstaltung"):
-
-            title = email.subject
-            if issue_exists(repo, title):
-                print(f"Issue with title '{title}' already exists. Skipping creation.")
-                continue
-
-            body = template.render(template_vars)
-            assignees = ["geritwagner"]
-
-            create_github_issue(repo, title, body, assignees)
+        if email.subject.startswith("teaching_evaluations zur Veranstaltung"):
+            teaching_evaluations(email, handbook_repo)
+        if (
+            email.subject == "[digital-work-labot]: Start registration"
+            or email.subject == "AW: AW: Masterarbeit Anmeldung"
+        ):
+            start_thesis_registration(account, email)

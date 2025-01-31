@@ -10,12 +10,12 @@ from pathlib import Path
 from urllib.parse import quote
 
 import git
-from docx import Document
 from github import Github
 from github.Issue import Issue
 from PyPDF2 import PdfReader
 
 import labot.thesis
+import labot.thesis_utils
 from labot.constants import ThesisStatus
 
 
@@ -30,8 +30,6 @@ class ThesisRepo:
         if not self.GITHUB_TOKEN:
             raise OSError("The GITHUB_TOKEN environment variable is not set or empty.")
 
-        self.LABOT_TOKEN = os.getenv("LABOT_TOKEN")
-
         # Paths
         if not os.path.isdir("theses"):
             raise OSError(
@@ -42,78 +40,6 @@ class ThesisRepo:
 
         # Theses
         self.theses = labot.thesis.load_theses(theses_path=theses_path)
-
-    def _clean_name(self, raw_name: str) -> str:
-        parts = raw_name.split(",")
-        if len(parts) == 2:
-            last_name = parts[0].replace(" ", "").strip()
-            first_name = parts[1].strip()
-            return f"{last_name}, {first_name}"
-        return raw_name.strip()
-
-    def _extract_information(self, text: str) -> dict:
-
-        name_pattern = r"Name:\s*([^\n]+)"
-        student_id_pattern = r"Matrikelnummer:\s*(\d+)"
-        topic_pattern = r"Englisch \(zur Aufnahme ins Zeugnis\):\n([^\n]+)"
-        date_pattern_1 = r"Bamberg, den\s*(\d{2}\.\d{2}\.\d{4})"
-        date_pattern_2 = r"Bamberg, den\s*([\d-]+)"
-        work_time_pattern = r"(\d+)\s*Monate"
-        zulassung_date_pattern = r"Die Zulassung erfolgte am:\s*(\d{2}\.\d{2}\.\d{4})"
-
-        name_match = re.search(name_pattern, text)
-        student_id_match = re.search(student_id_pattern, text)
-        date_match = re.search(date_pattern_1, text)
-        if date_match:
-            # convert to YYYY-MM-DD
-            date = date_match.group(1)
-            date = re.sub(r"(\d{2})\.(\d{2})\.(\d{4})", r"\3-\2-\1", date)
-        else:
-            date_match = re.search(date_pattern_2, text)
-        topic_match = re.search(topic_pattern, text)
-        work_time_match = re.search(work_time_pattern, text)
-        zulassung_date_match = re.search(zulassung_date_pattern, text)
-
-        raw_name = name_match.group(1).strip() if name_match else None
-        name = self._clean_name(raw_name) if raw_name else None
-        student_id = student_id_match.group(1) if student_id_match else None
-        topic = topic_match.group(1).strip() if topic_match else None
-        date = date_match.group(1) if date_match else None
-        date = re.sub(r"(\d{2})\.(\d{2})\.(\d{4})", r"\3-\2-\1", date) if date else None
-        work_time = work_time_match.group(1) if work_time_match else "NA"
-        zulassung_date = zulassung_date_match.group(1) if zulassung_date_match else "NA"
-
-        level = "bachelor" if "bachelorarbeit" in text.lower() else "master"
-
-        return {
-            "student": name,
-            "student_id": student_id,
-            "Topic": topic,
-            "Date": date,
-            "Work Time": work_time + " months",
-            "Zulassung Date": zulassung_date,
-            "Level": level,
-        }
-
-    def _extract_text_from_word(self, file_path: str) -> str:
-        try:
-            document = Document(file_path)
-            text = []
-
-            for paragraph in document.paragraphs:
-                text.append(paragraph.text)
-
-            return "\n".join(text)
-
-        except Exception as e:
-            return f"An error occurred: {e}"
-
-    def _append_infos_from_word(self, registration: dict) -> dict:
-
-        extracted_text = self._extract_text_from_word(registration["word_file"])
-        info = self._extract_information(extracted_text)
-        registration.update(info)
-        return registration
 
     # Create a pull-request with student details and word file, add issue-link in
     # When merged: notify student in comment
@@ -135,6 +61,11 @@ class ThesisRepo:
         return parsed_data
 
     def start_registration(self, issue_url: str) -> None:
+        # TODO : currently, this runs in the students' repository.
+        # It should copy the word file to the theses-confidential repository
+        # Better: e-mail monitor: header "[digital-work-labot]: Start registration"
+        # In this case, we would also have the e-mail address.
+
         g = Github(self.GITHUB_TOKEN)
 
         try:
@@ -167,7 +98,7 @@ class ThesisRepo:
                     with open(file.name, "wb") as f:
                         f.write(file_content)
 
-                    info = self._append_infos_from_word(file.name)
+                    info = labot.thesis_utils.append_infos_from_word(file.name)
 
             markdown_table = "| Key                | Value |\n"
             markdown_table += "|--------------------|-------|\n"
@@ -338,7 +269,7 @@ class ThesisRepo:
     def process_registrations(self, registrations: list) -> None:
         for registration in registrations:
 
-            self._append_infos_from_word(registration)
+            labot.thesis_utils.append_infos_from_word(registration)
             pprint.pprint(registration)
             self.consistency_checks(registration)
 
@@ -353,10 +284,7 @@ class ThesisRepo:
 
             repo = git.Repo(Path.cwd())
 
-            assert (
-                self.LABOT_TOKEN is not None
-            ), "The LABOT_TOKEN environment variable is not set or empty."
-            g = Github(self.LABOT_TOKEN)
+            g = Github(self.GITHUB_TOKEN)
             gh_repo = g.get_repo(self.REPO_NAME)
 
             # check if branch_name exists on remote
