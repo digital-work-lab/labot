@@ -11,8 +11,8 @@ def new_semester(issue: Issue) -> None:
 
 
 def main(github_repo: Github, event_data: dict) -> None:
-    issue_nr = event_data["issue"]
-    issue = github_repo.get_issue(int(issue_nr))
+    issue_nr = event_data["issue"].get("number")
+    issue = github_repo.get_issue(issue_nr)
     comment_author = event_data.get("comment", {}).get("user", {}).get("login")
     comment_text = event_data.get("comment", {}).get("body")
     if "@digital-work-labot" not in comment_text:
