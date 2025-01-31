@@ -87,6 +87,7 @@ def _extract_information(text: str) -> dict:
 def append_infos_from_word(registration: dict) -> dict:
 
     extracted_text = _extract_text_from_word(registration["word_file"])
+    print(extracted_text)
     info = _extract_information(extracted_text)
     registration.update(info)
     return registration

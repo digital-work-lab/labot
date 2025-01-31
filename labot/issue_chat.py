@@ -97,6 +97,8 @@ def thesis_registration_accept(
         f.write(decoded_content)
 
     registration = {"repository": "NA", "word_file": local_path}
+    print(os.path.exists(local_path))
+
     registration = labot.monitor_email.append_infos_from_word(registration)
     print(registration)
     if registration["student"] is None:
