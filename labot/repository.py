@@ -919,7 +919,7 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
                 sys.exit(1)
             with open(event_path) as f:
                 event_data = json.load(f)
-            labot.issue_chat.main(self.github_repo, event_data)
+            labot.issue_chat.main(self.local_repo, self.github_repo, event_data)
             return
 
         # TODO : different functions for event-types? e.g.,
