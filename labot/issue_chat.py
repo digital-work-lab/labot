@@ -96,6 +96,28 @@ def thesis_registration_accept(
     with open(local_path, "wb") as f:
         f.write(decoded_content)
 
+    # ✅ Debugging: Check if the file was saved correctly
+    print(f"🔍 File exists: {os.path.exists(local_path)}")
+    if os.path.exists(local_path):
+        print(f"🔍 File size: {os.path.getsize(local_path)} bytes")
+
+        # Check file type (Linux/macOS only, useful for debugging)
+        try:
+            import subprocess
+
+            result = subprocess.run(
+                ["file", local_path], capture_output=True, text=True
+            )
+            print(f"🔍 File type: {result.stdout.strip()}")
+        except Exception as e:
+            print(f"⚠️ Unable to check file type: {e}")
+
+    # Ensure the file is valid before opening
+    if not os.path.exists(local_path) or os.path.getsize(local_path) == 0:
+        raise FileNotFoundError(f"❌ File not found or is empty: {local_path}")
+
+    print(f"✅ File successfully saved at: {local_path}")
+
     registration = {"repository": "NA", "word_file": local_path}
     print(os.path.exists(local_path))
 

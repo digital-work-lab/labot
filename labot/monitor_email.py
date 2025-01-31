@@ -17,17 +17,13 @@ from jinja2 import FileSystemLoader
 
 
 def _extract_text_from_word(file_path: str) -> str:
-    try:
-        document = Document(file_path)
-        text = []
+    document = Document(file_path)
+    text = []
 
-        for paragraph in document.paragraphs:
-            text.append(paragraph.text)
+    for paragraph in document.paragraphs:
+        text.append(paragraph.text)
 
-        return "\n".join(text)
-
-    except Exception as e:
-        return f"An error occurred: {e}"
+    return "\n".join(text)
 
 
 def _clean_name(raw_name: str) -> str:
