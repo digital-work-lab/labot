@@ -1,5 +1,7 @@
 #! /usr/bin/env python3
 """Labot issue chat."""
+import base64
+import os
 import re
 from datetime import datetime
 from datetime import timedelta
@@ -87,7 +89,14 @@ def thesis_registration_accept(
         )
         return
 
-    registration = {"repository": "NA", "word_file": file_name}
+    file_content = github_repo.get_contents(file_name, ref=branch_name)
+    decoded_content = base64.b64decode(file_content.content)
+
+    local_path = os.path.join("/tmp", os.path.basename(file_name))  # Save to /tmp
+    with open(local_path, "wb") as f:
+        f.write(decoded_content)
+
+    registration = {"repository": "NA", "word_file": local_path}
     registration = labot.monitor_email.append_infos_from_word(registration)
     print(registration)
     if registration["student"] is None:
