@@ -2,7 +2,6 @@
 """Monitor for E-Mail."""
 from __future__ import annotations
 
-import base64
 import os
 import re
 from datetime import datetime
@@ -157,7 +156,8 @@ def start_thesis_registration(account, email):
         )
         # upload word file in "digital-work-lab/theses-confidential" repository
         with open(file_path, "rb") as f:
-            file_content = base64.b64encode(f.read()).decode("utf-8")
+            # file_content = base64.b64encode(f.read()).decode()
+            file_content = f.read()
 
         try:
             repo.get_branch(branch)  # Check if the branch exists
