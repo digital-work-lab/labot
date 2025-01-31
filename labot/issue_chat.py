@@ -88,6 +88,7 @@ def thesis_registration_accept(
 
     registration = {"repository": "NA", "word_file": file_name}
     registration = labot.monitor_email.append_infos_from_word(registration)
+    print(registration)
     deadline_submission = datetime.strptime(
         registration["date_of_registration"], "%Y-%m-%d"
     ) + timedelta(int(registration["work_time_months"]) * 30)
