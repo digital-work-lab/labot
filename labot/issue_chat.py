@@ -66,7 +66,7 @@ def thesis_registration_accept(
         return None  # No match found
 
     def extract_file_name(issue_body: str) -> str:
-        match = re.search(r"\*\*File:\*\*: ([\.\w\s\/-]+)$", issue_body)
+        match = re.search(r" ([\w\s\/-]+\.docx)$", issue_body)
         if match:
             return match.group(1)
         else:
