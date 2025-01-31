@@ -159,7 +159,7 @@ def thesis_registration_accept(
     # create a new file in the github_repo
 
     template = labot.utils.get_template("theses_details.md.j2")
-    content = template.render(registration)
+    content = template.render(registration=registration)
     github_repo.create_file(
         f"theses/{next_number}_{registration['name']}.md",
         "Thesis registration",
