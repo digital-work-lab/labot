@@ -6,6 +6,7 @@ from datetime import datetime
 from datetime import timedelta
 from pathlib import Path
 
+import requests
 from git import Repo
 from github import Github
 from github import Issue
@@ -87,22 +88,22 @@ def thesis_registration_accept(
             "I'm sorry, I couldn't find the file name in the issue body."
         )
         return
-    CLONE_DIR = "/tmp/theses-confidential"
     GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-    GITHUB_REPO_URL = f"https://x-access-token:{GITHUB_TOKEN}@github.com/digital-work-lab/theses-confidential.git"
+    # CLONE_DIR = "/tmp/theses-confidential"
+    # GITHUB_REPO_URL = f"https://x-access-token:{GITHUB_TOKEN}@github.com/digital-work-lab/theses-confidential.git"
 
-    if not os.path.exists(CLONE_DIR):
-        Repo.clone_from(
-            GITHUB_REPO_URL,
-            CLONE_DIR,
-            branch=branch_name,
-            depth=1,
-        )
-    else:
-        print(f"✅ Repository already cloned: {CLONE_DIR}")
+    # if not os.path.exists(CLONE_DIR):
+    #     Repo.clone_from(
+    #         GITHUB_REPO_URL,
+    #         CLONE_DIR,
+    #         branch=branch_name,
+    #         depth=1,
+    #     )
+    # else:
+    #     print(f"✅ Repository already cloned: {CLONE_DIR}")
 
-    # ✅ Step 2: Access the file directly
-    local_path = os.path.join(CLONE_DIR, file_name)
+    # # ✅ Step 2: Access the file directly
+    # local_path = os.path.join(CLONE_DIR, file_name)
 
     # file_content = github_repo.get_contents(file_name, ref=branch_name)
     # decoded_content = base64.b64decode(file_content.content)
@@ -110,6 +111,29 @@ def thesis_registration_accept(
     # local_path = os.path.join("/tmp", os.path.basename(file_name))  # Save to /tmp
     # with open(local_path, "wb") as f:
     #     f.write(decoded_content)
+
+    # GitHub API URL
+    URL = f"https://api.github.com/repos/digital-work-lab/theses-confidential/contents/{file_name}?ref={branch_name}"
+
+    # Headers for authentication
+    HEADERS = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3.raw",
+    }
+
+    # Download file
+    response = requests.get(URL, headers=HEADERS)
+
+    if response.status_code == 200:
+        # Save file locally
+        local_path = os.path.basename(file_name)
+        with open(local_path, "wb") as file:
+            file.write(response.content)
+        print(f"✅ File downloaded: {local_path}")
+    else:
+        print(
+            f"❌ Failed to download file. HTTP {response.status_code}: {response.text}"
+        )
 
     # ✅ Debugging: Check if the file was saved correctly
     print(f"🔍 File exists: {os.path.exists(local_path)}")
