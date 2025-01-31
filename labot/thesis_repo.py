@@ -14,8 +14,8 @@ from github import Github
 from github.Issue import Issue
 from PyPDF2 import PdfReader
 
+import labot.monitor_email
 import labot.thesis
-import labot.thesis_utils
 from labot.constants import ThesisStatus
 
 
@@ -98,7 +98,7 @@ class ThesisRepo:
                     with open(file.name, "wb") as f:
                         f.write(file_content)
 
-                    info = labot.thesis_utils.append_infos_from_word(file.name)
+                    info = labot.monitor_email.append_infos_from_word(file.name)
 
             markdown_table = "| Key                | Value |\n"
             markdown_table += "|--------------------|-------|\n"
@@ -269,7 +269,7 @@ class ThesisRepo:
     def process_registrations(self, registrations: list) -> None:
         for registration in registrations:
 
-            labot.thesis_utils.append_infos_from_word(registration)
+            labot.monitor_email.append_infos_from_word(registration)
             pprint.pprint(registration)
             self.consistency_checks(registration)
 
