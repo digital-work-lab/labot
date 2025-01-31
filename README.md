@@ -52,3 +52,12 @@ export OPENAI_KEY="your_openai_api_key"
 expport GITHUB_TOKEN="your_pat_token"
 expport LABOT_PAT_TOKEN="labot_pat_token"
 ```
+
+To test the repos a token has access to:
+
+```
+curl -H "Authorization: token <your_token>" https://api.github.com/user/repos
+```
+
+https://llmstxt.org/
+https://llmstxt.org/intro.html
