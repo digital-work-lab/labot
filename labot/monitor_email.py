@@ -145,23 +145,24 @@ def start_thesis_registration(account, email):
         # TODO : rename
         # new_filename = f"{registration['name']}_{registration['student_id']}.docx"
 
-        target_path = f"registrations/{file_path}"
-        # upload word file in "digital-work-lab/theses-confidential" repository
         repo = g.get_repo("digital-work-lab/theses-confidential")
+        target_path = f"registrations/{file_path}"
+        existing_file = repo.get_contents(target_path)
+        # upload word file in "digital-work-lab/theses-confidential" repository
         with open(file_path, "rb") as f:
             file_content = base64.b64encode(f.read()).decode(
                 "utf-8"
             )  # Encode for GitHub API
 
+        print(registration["student"])
         repo.create_file(
-            target_path,
-            "Upload registration file",
-            file_content,
-            target_path,
+            path=target_path,
+            message="Upload registration file",
+            content=file_content,
+            sha=existing_file.sha,
             branch=registration["student"],
         )
         # Check if file already exists in the repo
-        # existing_file = repo.get_contents(TARGET_PATH)
 
         # # Update the file
         # repo.update_file(
