@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import os
 import re
+from datetime import datetime
 
 from docx import Document
 from exchangelib import Account
@@ -76,8 +77,8 @@ def _extract_information(text: str) -> dict:
         "student": name,
         "student_id": student_id,
         "Topic": topic,
-        "Date": date,
-        "Work Time": work_time + " months",
+        "date_of_registration": date,
+        "work_time_months": work_time,
         "Zulassung Date": zulassung_date,
         "Level": level,
     }
@@ -146,13 +147,13 @@ def start_thesis_registration(account, email):
         # new_filename = f"{registration['name']}_{registration['student_id']}.docx"
 
         repo = g.get_repo("digital-work-lab/theses-confidential")
-        target_path = f"registrations/{file_path}"
         branch = registration["student"].lower().replace(" ", "_").replace(",", "")
+        target_path = (
+            f"registrations/{datetime.now().strftime('%Y-%m-%d')}{branch}.docx"
+        )
         # upload word file in "digital-work-lab/theses-confidential" repository
         with open(file_path, "rb") as f:
-            file_content = base64.b64encode(f.read()).decode(
-                "utf-8"
-            )  # Encode for GitHub API
+            file_content = base64.b64encode(f.read()).decode("utf-8")
 
         try:
             repo.get_branch(branch)  # Check if the branch exists
@@ -222,29 +223,36 @@ def start_thesis_registration(account, email):
 
         # email confirmation: GW auf cc
 
-        title = email.subject
+        title = f"[Thesis Registration]: {registration['student']}"
         if issue_exists(repo, title):
             print(f"Issue with title '{title}' already exists. Skipping creation.")
             return
 
-        body = f"""
-        **Thesis Registration**
+        body = f"""**Thesis Registration**
 
-        **Student Name:** {registration['student']}
-        **Student ID:** {registration['student_id']}
-        **Thesis Title:** {registration['Topic']}
-        **Date:** {registration['Date']}
-        **Work Time:** {registration['Work Time']}
+Triggered via [e-mail monitor](https://github.com/digital-work-lab/labot/actions/workflows/monitor_inbox.yml).
 
-Branch: https://github.com/digital-work-lab/theses-confidential/tree/{registration['student']}
+**Student Name:** {registration['student']}
+**Student ID:** {registration['student_id']}
+**Thesis Title:** {registration['Topic']}
+**Date of Registration:** {registration['date_of_registration']}
+**Work Time:** {registration['work_time_months']} months
+
+🔗 **Branch:** [{branch}](https://github.com/digital-work-lab/theses-confidential/tree/{branch})
+
+**File:**: {target_path}
+
+TODO : wait for written/signed topic confirmation
+
+TODO : write command ("@digital-work-labot accept thesis registration") to confirm the registration
 
 """
         assignees = ["geritwagner"]
 
         try:
             issue = repo.create_issue(title=title, body=body, assignees=assignees)
-
             print(f"Issue created successfully! URL: {issue.html_url}")
+            # Note: currently not creating a pull request -> users should merge via labot command
         except Exception as e:
             print(f"Failed to create issue: {e}")
     except Exception as e:

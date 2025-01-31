@@ -210,7 +210,7 @@ class ThesisRepo:
     def consistency_checks(self, registration: Issue) -> None:
 
         # Check whether Date is after Zulassung Date
-        if registration["Date"] < registration["Zulassung Date"]:
+        if registration["date_of_registration"] < registration["Zulassung Date"]:
             raise ValueError("The date is before the Zulassung date.")
 
         # TODO : also check whether we already have a thesis (bachelor/master) for that student!
@@ -228,8 +228,8 @@ class ThesisRepo:
         name_split = data["student"].split(", ")
         last_name = name_split[0]
         first_name = name_split[1] if len(name_split) > 1 else ""
-        work_time_months = data["Work Time"].split()[0]
-        date_of_registration = data["Date"]
+        work_time_months = data["work_time_months"]
+        date_of_registration = data["date_of_registration"]
 
         file_name = f"{str(next_id).zfill(3)}_{last_name}_{first_name}.md"
         file_path = Path("theses") / file_name.replace(" ", "_")

@@ -1,0 +1,35 @@
+---
+student: {{ registration.student }}
+title: "{{ registration.Topic }}"
+level: {{ registration.Level }}
+student_id: {{ registration.student_id }}
+status: registered
+supervisor: geritwagner
+degree_program: "TODO"
+industry_partner: False
+date_of_registration: {{ registration.date_of_registration }}
+work_time_months: {{ registration.work_time_months }}
+deadline_submission: {{ registration.deadline_submission }}
+date_of_actual_submission: ""
+plagiarism_check_result: ""
+deadline_for_the_review: ""
+date_review_created: ""
+---
+
+# {{ registration.student }}
+
+```mermaid
+gantt
+    title Progress, {{ registration.student }}
+    dateFormat  YYYY-MM-DD
+    section Registration
+    Registration: milestone, {{ registration.date_of_registration }},
+    section Work Progress
+    Work Time ({{ registration.work_time_months }} months): active, {{ registration.date_of_registration }}, {{ registration.work_time_days }}d
+    Expected Submission: milestone, {{ registration.deadline_submission }}, 1d
+    section Review Process
+    Review period: active, {{ registration.deadline_submission }}, 90d
+    Expected Review Completion: milestone, {{ registration.expected_review_completion }}, 1d
+```
+
+# NOTES
