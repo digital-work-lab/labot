@@ -15,13 +15,13 @@ def main(github_repo: Github, event_data: dict) -> None:
     issue = github_repo.get_issue(issue_nr)
     comment_author = event_data.get("comment", {}).get("user", {}).get("login")
     comment_text = event_data.get("comment", {}).get("body")
-    if "@labot" not in comment_text:
+    if "@digital-work-labot" not in comment_text:
         return
     if comment_author != "geritwagner":
         # later: others
         return
 
-    COMMANDS = {"@labot create new semester": new_semester}
+    COMMANDS = {"@digital-work-labot create new semester": new_semester}
 
     if comment_text in COMMANDS:
         COMMANDS[comment_text](issue)
