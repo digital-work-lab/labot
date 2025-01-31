@@ -9,6 +9,7 @@ from docx import Document
 from exchangelib import Account
 from exchangelib import Credentials
 from exchangelib import DELEGATE
+from exchangelib import Message
 from github import Github
 from jinja2 import Environment
 from jinja2 import FileSystemLoader
@@ -196,12 +197,15 @@ def start_thesis_registration(account, email):
     **Student Name:** {registration['student']}
     **Student ID:** {registration['student_id']} """
 
-    # send a report to gerit.wagner@uni-bamberg.de
-    account.send_email(
+    # send a report
+    email_message = Message(
+        account=account,
+        folder=account.sent,
         subject=f"AW: {email.subject}",
         body=body,
         to_recipients=["gerit.wagner@uni-bamberg.de"],
     )
+    email_message.send()
 
 
 if __name__ == "__main__":
