@@ -18,6 +18,7 @@ from git import Repo
 from github import Github
 from openai import OpenAI
 
+import labot.issue_chat
 import labot.notes
 import labot.paper
 import labot.thesis
@@ -179,19 +180,21 @@ class Repository:
 
     def _detect_event_type(self) -> str:
         event_name = os.getenv("GITHUB_EVENT_NAME")
+        if not event_name:
+            event_name = "local"
 
         if event_name == "pull_request":
             head_ref = os.getenv("GITHUB_HEAD_REF", "unknown")
             base_ref = os.getenv("GITHUB_BASE_REF", "unknown")
             print(f"Triggered by a pull request from {head_ref} to {base_ref}.")
-            return "pull_request"
         elif event_name == "push":
             branch = os.getenv("GITHUB_REF", "unknown").replace("refs/heads/", "")
             print(f"Triggered by a push to branch {branch}.")
-            return "push"
+        elif event_name == "issue_comment":
+            pass
         else:
             print(f"Triggered by an unrecognized event: {event_name}")
-            return "other"
+        return event_name
 
     def _check_github_token_permissions(self) -> None:
         """Check if the GITHUB_TOKEN has permissions to create pull requests and issues."""
@@ -908,6 +911,16 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
     def main(self) -> None:
         """Main function."""
         self._check_github_token_permissions()
+
+        if self._detect_event_type() == "issue_comment":
+            event_path = os.getenv("GITHUB_EVENT_PATH")
+            if not event_path:
+                print("GITHUB_EVENT_PATH environment variable is not set.")
+                sys.exit(1)
+            with open(event_path) as f:
+                event_data = json.load(f)
+            labot.issue_chat.main(self.github_repo, event_data)
+            return
 
         # TODO : different functions for event-types? e.g.,
         """
