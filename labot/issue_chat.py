@@ -1,6 +1,5 @@
 #! /usr/bin/env python3
 """Labot issue chat."""
-import base64
 import os
 import re
 from datetime import datetime
@@ -88,13 +87,26 @@ def thesis_registration_accept(
             "I'm sorry, I couldn't find the file name in the issue body."
         )
         return
+    CLONE_DIR = "/tmp/theses-confidential"
+    if not os.path.exists(CLONE_DIR):
+        Repo.clone_from(
+            "git@github.com:digital-work-lab/theses-confidential.git",
+            CLONE_DIR,
+            branch=branch_name,
+            depth=1,
+        )
+    else:
+        print(f"✅ Repository already cloned: {CLONE_DIR}")
 
-    file_content = github_repo.get_contents(file_name, ref=branch_name)
-    decoded_content = base64.b64decode(file_content.content)
+    # ✅ Step 2: Access the file directly
+    local_path = os.path.join(CLONE_DIR, "registrations/2025-01-31albaner_daniela.docx")
 
-    local_path = os.path.join("/tmp", os.path.basename(file_name))  # Save to /tmp
-    with open(local_path, "wb") as f:
-        f.write(decoded_content)
+    # file_content = github_repo.get_contents(file_name, ref=branch_name)
+    # decoded_content = base64.b64decode(file_content.content)
+
+    # local_path = os.path.join("/tmp", os.path.basename(file_name))  # Save to /tmp
+    # with open(local_path, "wb") as f:
+    #     f.write(decoded_content)
 
     # ✅ Debugging: Check if the file was saved correctly
     print(f"🔍 File exists: {os.path.exists(local_path)}")
