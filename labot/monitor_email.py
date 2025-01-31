@@ -2,6 +2,7 @@
 """Monitor for E-Mail."""
 from __future__ import annotations
 
+import base64
 import os
 import re
 
@@ -147,10 +148,15 @@ def start_thesis_registration(account, email):
         target_path = f"registrations/{file_path}"
         # upload word file in "digital-work-lab/theses-confidential" repository
         repo = g.get_repo("digital-work-lab/theses-confidential")
+        with open(file_path, "rb") as f:
+            file_content = base64.b64encode(f.read()).decode(
+                "utf-8"
+            )  # Encode for GitHub API
+
         repo.create_file(
             target_path,
             "Upload registration file",
-            open(file_path).read(),
+            file_content,
             target_path,
             branch=registration["student"],
         )
