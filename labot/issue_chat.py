@@ -66,7 +66,7 @@ def thesis_registration_accept(
         return None  # No match found
 
     def extract_file_name(issue_body: str) -> str:
-        match = re.search(r"\*\*File:\*\*: ([\w\s\/]+)", issue_body)
+        match = re.search(r"\*\*File:\*\*: ([\.\w\s\/-]+)$", issue_body)
         if match:
             return match.group(1)
         else:
@@ -88,10 +88,10 @@ def thesis_registration_accept(
 
     registration = {"repository": "NA", "word_file": file_name}
     registration = labot.monitor_email.append_infos_from_word(registration)
+    print(registration)
     if registration["student"] is None:
         issue.create_comment("I'm sorry, I couldn't find the student name in the file.")
         return
-    print(registration)
     deadline_submission = datetime.strptime(
         registration["date_of_registration"], "%Y-%m-%d"
     ) + timedelta(int(registration["work_time_months"]) * 30)
