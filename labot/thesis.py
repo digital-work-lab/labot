@@ -457,9 +457,12 @@ def previous_bimonth_date() -> datetime:
 
     # Define bi-monthly start dates
     bi_months = [2, 4, 6, 8, 10, 12]  # Feb, Apr, Jun, Aug, Oct, Dec
-    prev_month = next(
-        (m for m in reversed(bi_months) if m < current_month), bi_months[-1]
-    )
+    if current_month in bi_months:
+        prev_month = current_month
+    else:
+        prev_month = next(
+            (m for m in reversed(bi_months) if m < current_month), bi_months[-1]
+        )
 
     # If we wrapped around to the previous year
     prev_year = current_year if prev_month < current_month else current_year - 1
