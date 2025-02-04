@@ -3,17 +3,21 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
 
-import colrev.constants
 import colrev.env.environment_manager
 import colrev.env.local_index
 import colrev.env.tei_parser
 import colrev.exceptions as colrev_exceptions
 import colrev.loader.load_utils
 import colrev.record.record_id_setter
+import colrev.record.record_pdf
 import inquirer
+from colrev.constants import ENTRYTYPES
+from colrev.constants import Fields
+from colrev.constants import IDPattern
 from colrev.constants import RecordState
 from colrev.packages.crossref.src import crossref_api
 from colrev.writer.write_utils import write_file
@@ -117,15 +121,36 @@ def import_missing_references(missing_references: list, references: dict) -> Non
             colrev_exceptions.InvalidPDFException,
         ):
 
-            tei = colrev.env.tei_parser.TEIParser(
-                environment_manager=environment_manager,
-                pdf_path=pdf_path,
-            )
-            retrieved_record_dict = tei.get_metadata()
-            if "doi" in retrieved_record_dict:
-                retrieved_record_dict = api.query_doi(
-                    doi=retrieved_record_dict["doi"]
-                ).data
+            try:
+                tei = colrev.env.tei_parser.TEIParser(
+                    environment_manager=environment_manager,
+                    pdf_path=pdf_path,
+                )
+                retrieved_record_dict = tei.get_metadata()
+            except colrev_exceptions.TEIException:
+                retrieved_record_dict = {
+                    Fields.ID: missing_reference,
+                    Fields.ENTRYTYPE: ENTRYTYPES.ARTICLE,
+                    Fields.FILE: pdf_path,
+                }
+
+                try:
+                    record = colrev.record.record_pdf.PDFRecord(
+                        retrieved_record_dict, path=pdf_path.parent
+                    )
+                    _doi_regex = re.compile(r"10\.\d{4,9}/[-._;/:A-Za-z0-9]*")
+                    if Fields.DOI not in retrieved_record_dict:
+                        record.set_text_from_pdf()
+                        res = re.findall(_doi_regex, record.data[Fields.TEXT_FROM_PDF])
+                        if res:
+                            record.data[Fields.DOI] = res[0].upper()
+                    record.data.pop(Fields.TEXT_FROM_PDF, None)
+                    record.data.pop(Fields.NR_PAGES_IN_FILE, None)
+                except colrev_exceptions.InvalidPDFException as exc:
+                    raise exc
+
+        if "doi" in retrieved_record_dict:
+            retrieved_record_dict = api.query_doi(doi=retrieved_record_dict["doi"]).data
 
         # remove all fields starting with "colrev_"
         retrieved_record_dict = {
@@ -137,16 +162,16 @@ def import_missing_references(missing_references: list, references: dict) -> Non
         retrieved_record_dict.pop("curation_ID", None)
         retrieved_record_dict.pop("language", None)
         id_setter = colrev.record.record_id_setter.IDSetter(
-            id_pattern=colrev.constants.IDPattern.three_authors_year,
+            id_pattern=IDPattern.three_authors_year,
             skip_local_index=False,
         )
-        retrieved_record_dict[colrev.constants.Fields.STATUS] = RecordState.md_imported
+        retrieved_record_dict[Fields.STATUS] = RecordState.md_imported
         updated_record = id_setter.set_ids(
             records={"record": retrieved_record_dict},
         )
 
         retrieved_record_dict = next(iter(updated_record.values()))
-        retrieved_record_dict.pop(colrev.constants.Fields.STATUS, None)
+        retrieved_record_dict.pop(Fields.STATUS, None)
 
         if "ID" not in retrieved_record_dict:
             retrieved_record_dict["ID"] = missing_reference
