@@ -233,7 +233,7 @@ def send_thesis_registration_email_exchange(file_path: str, student_name: str):
     CC_EMAILS = ["gerit.wagner@uni-bamberg.de"]
 
     # Exchange authentication
-    credentials = Credentials(EMAIL_ADDRESS, EMAIL_PASSWORD)
+    credentials = Credentials(username=EMAIL_ADDRESS, password=EMAIL_PASSWORD)
     account = Account(EMAIL_ADDRESS, credentials=credentials, autodiscover=True)
 
     # Create email
