@@ -212,6 +212,11 @@ def thesis_registration_accept(
     # Call this function at the end of thesis_registration_accept()
     send_thesis_registration_email_exchange(local_path, registration["student"])
 
+    issue.create_comment("Sent the e-mail to the examination office")
+    issue.create_comment(
+        "- [ ] TODO (in issue_chat.py): merge pull request and close issue"
+    )
+
 
 def send_thesis_registration_email_exchange(file_path: str, student_name: str):
     """
@@ -225,6 +230,7 @@ def send_thesis_registration_email_exchange(file_path: str, student_name: str):
     EMAIL_ADDRESS = os.getenv("EMAIL")
     EMAIL_PASSWORD = os.getenv("PASSWORD")
     RECIPIENT_EMAIL = "gerit.wagner@posteo.de"
+    CC_EMAILS = ["gerit.wagner@uni-bamberg.de"]
 
     # Exchange authentication
     credentials = Credentials(EMAIL_ADDRESS, EMAIL_PASSWORD)
@@ -247,6 +253,7 @@ Gerit Wagner
         subject=subject,
         body=body,
         to_recipients=[RECIPIENT_EMAIL],
+        cc_recipients=CC_EMAILS,
     )
 
     # Attach the thesis document
