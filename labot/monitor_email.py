@@ -240,7 +240,7 @@ def start_thesis_registration(account, email):
         # )
 
         # email confirmation: GW auf cc
-
+        registration["branch"] = branch
         template = get_template("thesis_registration_issue.md.j2")
         body = template.render(registration=registration)
 
