@@ -6,13 +6,12 @@ import os
 import re
 from datetime import datetime
 
+import utils
 from docx import Document
 from exchangelib import Account
 from exchangelib import Credentials
 from exchangelib import DELEGATE
 from github import Github
-
-import labot.utils
 
 
 def _extract_text_from_word(file_path: str) -> str:
@@ -231,7 +230,7 @@ def start_thesis_registration(account, email):
 
         # email confirmation: GW auf cc
 
-        template = labot.utils.get_template("thesis_registration_issue.md.j2")
+        template = utils.get_template("thesis_registration_issue.md.j2")
         body = template.render(registration=registration)
 
         #         body = f"""**Thesis Registration**
@@ -315,7 +314,7 @@ if __name__ == "__main__":
     handbook_repo = g.get_repo(handbook_repo)
 
     template_vars = {}
-    template = labot.utils.get_template("course_evaluation_issue.md.j2")
+    template = utils.get_template("course_evaluation_issue.md.j2")
     # TODO : use template ?!
 
     for email in new_emails:

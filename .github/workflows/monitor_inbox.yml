@@ -45,4 +45,5 @@ jobs:
           PASSWORD: ${{ secrets.EXCHANGE_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.MY_PAT_TOKEN }}
         run: |
-          python labot/monitor_email.py
+          cd labot
+          python monitor_email.py
