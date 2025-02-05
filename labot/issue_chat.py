@@ -7,6 +7,10 @@ from datetime import timedelta
 from pathlib import Path
 
 import requests
+from exchangelib import Account
+from exchangelib import Credentials
+from exchangelib import FileAttachment
+from exchangelib import Message
 from git import Repo
 from github import Github
 from github import Issue
@@ -204,6 +208,55 @@ def thesis_registration_accept(
     issue.create_comment(
         f"I created the [thesis file](https://github.com/digital-work-lab/theses-confidential/blob/{branch_name}/{thesis_filename}?plain=1) 📚\n\nPlease check and merge the [pull request]({pull_request_link})"
     )
+
+    # Call this function at the end of thesis_registration_accept()
+    send_thesis_registration_email_exchange(local_path, registration["student"])
+
+
+def send_thesis_registration_email_exchange(file_path: str, student_name: str):
+    """
+    Sends an email via Microsoft Exchange with the attached thesis registration document.
+
+    :param file_path: Path to the thesis registration Word document.
+    :param student_name: Name of the student for whom the thesis registration is being sent.
+    """
+
+    # Load credentials (securely stored in environment variables)
+    EMAIL_ADDRESS = os.getenv("EMAIL")
+    EMAIL_PASSWORD = os.getenv("PASSWORD")
+    RECIPIENT_EMAIL = "gerit.wagner@posteo.de"
+
+    # Exchange authentication
+    credentials = Credentials(EMAIL_ADDRESS, EMAIL_PASSWORD)
+    account = Account(EMAIL_ADDRESS, credentials=credentials, autodiscover=True)
+
+    # Create email
+    subject = "Anmeldung Abschlussarbeit"
+    body = f"""Liebe Frau Schick,
+
+anbei übersende ich Ihnen die ausgefüllte Themenbestätigung für {student_name}.
+
+Mit besten Grüßen
+
+Gerit Wagner
+"""
+
+    msg = Message(
+        account=account,
+        folder=account.sent,  # Save to "Sent Items"
+        subject=subject,
+        body=body,
+        to_recipients=[RECIPIENT_EMAIL],
+    )
+
+    # Attach the thesis document
+    with open(file_path, "rb") as f:
+        attachment = FileAttachment(name=os.path.basename(file_path), content=f.read())
+        msg.attach(attachment)
+
+    # Send the email
+    msg.send()
+    print("✅ Email sent successfully via Exchange")
 
 
 def comment(local_repo: Repo, github_repo: Github, event_data: dict) -> None:
