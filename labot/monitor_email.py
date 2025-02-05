@@ -11,8 +11,8 @@ from exchangelib import Account
 from exchangelib import Credentials
 from exchangelib import DELEGATE
 from github import Github
-from jinja2 import Environment
-from jinja2 import FileSystemLoader
+
+import labot.utils
 
 
 def _extract_text_from_word(file_path: str) -> str:
@@ -231,29 +231,32 @@ def start_thesis_registration(account, email):
 
         # email confirmation: GW auf cc
 
-        body = f"""**Thesis Registration**
+        template = labot.utils.get_template("thesis_registration_issue.md.j2")
+        body = template.render(registration=registration)
 
-Triggered via [e-mail monitor](https://github.com/digital-work-lab/labot/actions/workflows/monitor_inbox.yml).
+        #         body = f"""**Thesis Registration**
 
-**Student Name:** {registration['student']}
-**Student ID:** {registration['student_id']}
-**Thesis Title:** {registration['Topic']}
-**Date of Registration:** {registration['date_of_registration']}
-**Work Time:** {registration['work_time_months']} months
+        # Triggered via [e-mail monitor](https://github.com/digital-work-lab/labot/actions/workflows/monitor_inbox.yml).
 
-🔗 **Branch:** [{branch}](https://github.com/digital-work-lab/theses-confidential/tree/{branch})
+        # **Student Name:** {registration['student']}
+        # **Student ID:** {registration['student_id']}
+        # **Thesis Title:** {registration['Topic']}
+        # **Date of Registration:** {registration['date_of_registration']}
+        # **Work Time:** {registration['work_time_months']} months
 
-**File:** {target_path}
+        # 🔗 **Branch:** [{branch}](https://github.com/digital-work-lab/theses-confidential/tree/{branch})
 
-Please: wait for written/signed topic confirmations.
+        # **File:** {target_path}
 
-Once they are availabe, complete the process by running:
+        # Please: wait for written/signed topic confirmations.
 
-```
-@digital-work-labot accept thesis registration
-```
+        # Once they are availabe, complete the process by running:
 
-"""
+        # ```
+        # @digital-work-labot accept thesis registration
+        # ```
+
+        # """
         assignees = ["geritwagner"]
 
         try:
@@ -312,9 +315,8 @@ if __name__ == "__main__":
     handbook_repo = g.get_repo(handbook_repo)
 
     template_vars = {}
-
-    env = Environment(loader=FileSystemLoader("labot/templates"))
-    template = env.get_template("course_evaluation_issue.md.j2")
+    template = labot.utils.get_template("course_evaluation_issue.md.j2")
+    # TODO : use template ?!
 
     for email in new_emails:
         if email.subject.startswith("teaching_evaluations zur Veranstaltung"):

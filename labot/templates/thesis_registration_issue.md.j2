@@ -1,0 +1,26 @@
+**Thesis Registration**
+
+Triggered via [e-mail monitor](https://github.com/digital-work-lab/labot/actions/workflows/monitor_inbox.yml).
+
+Data extracted from the word document:
+
+**Student Name:** {{ registration.student }}
+**Student ID:** {{ registration.student_id }}
+**Thesis Title:** {{ registration.Topic }}
+**Date of Registration:** {{ registration.date_of_registration }}
+**Work Time:** {{ registration.work_time_months }} months
+
+🔗 **Branch:** [{{ branch }}](https://github.com/digital-work-lab/theses-confidential/tree/{{ branch }})
+
+**File:** {{ target_path }}
+
+- [x] Received word document
+- [ ] Checked/updated data
+- [ ] Received and signed document
+- [ ] Sent word document to examination office
+
+Once all boxes are checked, complete the process by running:
+
+```
+@digital-work-labot accept thesis registration
+```
