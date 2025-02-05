@@ -6,12 +6,23 @@ import os
 import re
 from datetime import datetime
 
-import utils
 from docx import Document
 from exchangelib import Account
 from exchangelib import Credentials
 from exchangelib import DELEGATE
 from github import Github
+from jinja2 import Environment
+from jinja2 import FileSystemLoader
+from jinja2 import Template
+
+
+def get_template(filename: str) -> Template:
+    # Assuming templates are in the 'templates' directory relative to the script location
+    template_dir = os.path.join(os.path.dirname(__file__), "templates")
+
+    env = Environment(loader=FileSystemLoader(template_dir))
+    template = env.get_template(filename)
+    return template
 
 
 def _extract_text_from_word(file_path: str) -> str:
@@ -230,7 +241,7 @@ def start_thesis_registration(account, email):
 
         # email confirmation: GW auf cc
 
-        template = utils.get_template("thesis_registration_issue.md.j2")
+        template = get_template("thesis_registration_issue.md.j2")
         body = template.render(registration=registration)
 
         #         body = f"""**Thesis Registration**
@@ -314,7 +325,7 @@ if __name__ == "__main__":
     handbook_repo = g.get_repo(handbook_repo)
 
     template_vars = {}
-    template = utils.get_template("course_evaluation_issue.md.j2")
+    template = get_template("course_evaluation_issue.md.j2")
     # TODO : use template ?!
 
     for email in new_emails:
