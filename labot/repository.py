@@ -852,18 +852,18 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
         # Regenerate the chart
         updated_chart = f"""{'{: .text-center}'}
     ```mermaid
-    ---
-    config:
-        xyChart:
-            width: 900
-            height: 300
-    ---
-    xychart-beta
-        x-axis [{', '.join(x_axis)}]
-        y-axis "Theses (current vs capacity)" 0 --> {max(max(bar_data), max(line_data))}
-        bar [{', '.join(map(str, bar_data))}]
-        line [{', '.join(map(str, line_data))}]
-    ```"""
+---
+config:
+    xyChart:
+        width: 900
+        height: 300
+---
+xychart-beta
+    x-axis [{', '.join(x_axis)}]
+    y-axis "Theses (current vs capacity)" 0 --> {max(max(bar_data), max(line_data))}
+    bar [{', '.join(map(str, bar_data))}]
+    line [{', '.join(map(str, line_data))}]
+```"""
         return updated_chart
 
     def _write_availability_md(self, file_path: str, content: str) -> None:
