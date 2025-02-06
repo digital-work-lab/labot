@@ -851,7 +851,7 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
 
         # Regenerate the chart
         updated_chart = f"""{'{: .text-center}'}
-    ```mermaid
+```mermaid
 ---
 config:
     xyChart:
