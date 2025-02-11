@@ -502,7 +502,7 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
                 thesis.notify_for_inactive_students(self.github_repo)
                 thesis.notify_close_to_submission(self.github_repo)
 
-            labot.thesis.generate_gantt(theses)
+            labot.thesis.generate_gantt(theses, self.local_repo)
 
             labot.thesis.create_issue_accept_thesis_supervision(self.github_repo)
 

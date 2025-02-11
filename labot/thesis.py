@@ -12,6 +12,7 @@ from pathlib import Path
 import inquirer
 import yamale
 import yaml
+from git import Repo
 from github import Github
 from mailmerge import MailMerge
 
@@ -404,7 +405,7 @@ date_review_created: '{thesis.date_review_created}'
     thesis_file.write_text(yaml_header + thesis_content)
 
 
-def generate_gantt(theses: list) -> None:
+def generate_gantt(theses: list, local_repo: Repo) -> None:
     """Generate a Gantt chart for all active theses."""
 
     print("Generating Gantt chart...")
@@ -442,14 +443,20 @@ def generate_gantt(theses: list) -> None:
             )
 
     print("\n".join(gantt_chart))
-
-    with open("gantt_chart.md", "w") as file:
+    file_path = "gantt_chart.md"
+    with open(file_path, "w") as file:
         file.write("# Gantt Chart\n")
         file.write("```mermaid\n")
         file.write("\n".join(gantt_chart))
         file.write("\n```\n")
 
     print("Gantt chart generated and saved as gantt_chart.md")
+
+    # add, commit and push the gantt_chart.md file
+    local_repo.git.add(file_path)
+    local_repo.index.commit("Update availability chart")
+    origin = local_repo.remotes.origin
+    origin.push("main")
 
 
 def previous_bimonth_date() -> datetime:
