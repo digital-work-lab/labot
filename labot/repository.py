@@ -475,6 +475,8 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
     def _run_teaching_repo_checks(self) -> None:
         """Run checks specific to teaching repositories."""
 
+        print("Running teaching repository checks...")
+
         # Require a reset_course.yml workflow
 
         # workflows_url = f"{GH_API_BASE_URL}/repos/{self.GITHUB_REPOSITORY}/actions/workflows"

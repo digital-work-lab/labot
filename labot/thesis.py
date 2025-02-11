@@ -407,6 +407,8 @@ date_review_created: '{thesis.date_review_created}'
 def generate_gantt(theses: list) -> None:
     """Generate a Gantt chart for all active theses."""
 
+    print("Generating Gantt chart...")
+
     active_theses = [thesis for thesis in theses if thesis.status != "archived"]
     sorted_theses = sorted(
         active_theses,
