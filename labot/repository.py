@@ -467,6 +467,7 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
                 print(f"Issue created: {issue.html_url}")
 
             if paper.just_submitted():
+                print('Just submitted, create issue')
                 template = labot.utils.get_template("paper_submitted_issue.md.j2")
                 issue = self.github_repo.create_issue(
                     title="Paper submitted",
