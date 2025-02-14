@@ -24,17 +24,26 @@ class Paper:
         self._set_attributes_from_metadata()
         self._save_metadata()  # Save any updates to paper.md
 
-    def just_published(self) -> bool:
-        if self.status != "published":
-            return False
-
+    def get_previous_status(self) -> str:
         last_commit = self.local_repo.head.commit.parents[0]
         paper_md_content = last_commit.tree / str(self.paper_md).replace("\\", "/")
         yaml_header = (
             paper_md_content.data_stream.read().decode("utf-8").split("---", 2)[1]
         )
         last_status = yaml.safe_load(yaml_header)["project"]["status"]
-        return last_status != "published"
+        return last_status
+
+    def just_submitted(self) -> bool:
+        if self.status != "under_review":
+            return False
+
+        return self.get_previous_status() != "under_review"
+
+    def just_published(self) -> bool:
+        if self.status != "published":
+            return False
+
+        return self.get_previous_status() != "published"
 
     def _load_metadata(self) -> dict:
         """Parse YAML metadata from paper.md."""
