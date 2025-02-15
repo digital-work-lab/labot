@@ -4,7 +4,11 @@
 
 {{ paper_metadata.get('abstract', 'no-abstract') }}
 
-<Core takeaways from the research>
+- Core takeaways from the research
+
+{% if paper_metadata.get('highlights') %}
+{{ paper_metadata.highlights }}
+{% endif %}
 
 ## Connections
 
@@ -14,5 +18,5 @@
 {% endfor %}
 - [ ] Add other connections manually
 {% else %}
-<Links to overarching concepts from the concepts/ directory>
+- Links to overarching concepts from the concepts/ directory
 {% endif %}

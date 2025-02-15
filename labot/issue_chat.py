@@ -199,7 +199,7 @@ def thesis_registration_accept(
     # create pull request
     pr = github_repo.create_pull(
         title=f"Thesis registration for {registration['student']}",
-        body=f"Please check the registration details for {registration['student']} and merge this pull request.\n\n🔗 **Issue:** [#{issue_number}](https://github.com/digital-work-lab/theses-confidential/issues/{issue_number})",
+        body=f"TODO : send e-mail to examination office: ADD .\nPlease check the registration details for {registration['student']} and merge this pull request.\n\n🔗 **Issue:** [#{issue_number}](https://github.com/digital-work-lab/theses-confidential/issues/{issue_number})",
         base="main",
         head=branch_name,
     )

@@ -24,6 +24,7 @@ pypdf2 = "^3.0.1"
 colrev = "^0.13.2"
 jinja2 = "^3.1.5"
 exchangelib = "^5.5.0"
+pdfannots = "^0.5"
 
 [tool.poetry.scripts]
 labot = "labot.cli:main"

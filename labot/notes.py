@@ -51,10 +51,30 @@ def get_missing_paper_summaries(papers_paths: list, references: dict) -> list:
     return missing_paper_summaries
 
 
+def get_pdf_highlights(pdf_path, grouped=True):
+    """Extracts annotations from a PDF and returns them in Markdown format."""
+    from pdfannots import process_file
+    from pdfannots.printer.markdown import MarkdownPrinter, GroupedMarkdownPrinter
+    # Choose printer (GroupedMarkdownPrinter groups highlights into sections)
+    printer = GroupedMarkdownPrinter() if grouped else MarkdownPrinter()
+
+    # Process the file
+    doc = process_file(open(pdf_path, "rb"))
+
+    # Generate Markdown output
+    output = printer.begin()
+    output += "".join(printer.print_file(pdf_path, doc))
+    output += printer.end()
+
+    return output
+
 def create_paper_summary(missing_paper_summary: dict, references: dict) -> None:
 
     paper_metadata = references[missing_paper_summary]
     paper_summary = Path(f"papers/{missing_paper_summary}.md")
+
+    pdf_highlights = get_pdf_highlights(Path(f"pdfs/{missing_paper_summary}.pdf"))
+    paper_metadata["highlights"] = pdf_highlights
 
     matching_connections = []
     for concept in Path("concepts").iterdir():

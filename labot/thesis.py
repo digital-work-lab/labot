@@ -393,6 +393,7 @@ degree_program: {thesis.degree_program}
 industry_partner: {thesis.industry_partner}
 date_of_registration: '{thesis.date_of_registration}'
 work_time_months: {thesis.work_time_months}
+deadline_submission: '{thesis.deadline_submission}'
 date_of_actual_submission: '{thesis.date_of_actual_submission}'
 plagiarism_check_result: '{thesis.plagiarism_check_result}'
 deadline_for_the_review: '{thesis.deadline_for_the_review}'

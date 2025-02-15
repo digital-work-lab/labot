@@ -419,11 +419,14 @@ class ThesisRepo:
 
             input("save as submission.pdf")
             submission_pdf = Path.cwd() / "submission.pdf"
+            submission_pdf = Path(
+                "/home/gerit/ownCloud/data/teaching/theses-confidential/submissions/028_Klarmann_Jessica_Petra.pdf"
+            )
 
             text = self._extract_text_from_pdf(submission_pdf)
 
             # match date "DD.MM.YYYY" from text
-            date_match = re.search(r"\d{2}\.\d{2}\.\d{4}", text)
+            date_match = re.search(r"\d{2}\.\d{2}\.20\d{2}", text)
 
             if date_match:
                 submission_date = re.sub(
@@ -472,13 +475,16 @@ class ThesisRepo:
             thesis.date_of_actual_submission = str(submission_date)
             labot.thesis.update_thesis_metadata(thesis)
 
-            # add new_file and thesis.filename to git using gitpython
-            print("- Add commit and push")
-            repo = git.Repo(Path.cwd())
-            repo.git.add(new_path)
-            repo.git.add(Path("theses") / thesis.filename)
-            repo.git.commit("-m", f"Add submission for {thesis.student}")
-            repo.git.push()
+            try:
+                # add new_file and thesis.filename to git using gitpython
+                print("- Add commit and push")
+                repo = git.Repo(Path.cwd())
+                repo.git.add(new_path)
+                repo.git.add(Path("theses") / thesis.filename)
+                repo.git.commit("-m", f"Add submission for {thesis.student}")
+                repo.git.push()
+            except Exception as exc:
+                print(exc)
 
             pdf_file_path = (
                 f"https://github.com/{self.REPO_NAME}/blob/main/submissions/"
@@ -504,14 +510,14 @@ class ThesisRepo:
                 f"**PDF:** [file]({pdf_file_path})\n\n"
                 f"Supervisor: @{thesis.supervisor}\n"
                 f"Please do your best to complete the review by {greading_target.strftime('%Y-%m-%d')} "
-                f"(official deadline: {grading_deadline.strftime("%Y-%m-%d")})"
-                f"- [ ] Plagiarism check with [Turnitin](https://www.uni-bamberg.de/its/turnitin)"
+                f"(official deadline: {grading_deadline.strftime("%Y-%m-%d")})\n\n"
+                f"- [ ] Plagiarism check with [Turnitin](https://www.uni-bamberg.de/its/turnitin)\n"
                 # TODO automatically mark XY_thesis.md?
                 "- [handbook: process](https://digital-work-lab.github.io/handbook/docs/30-teaching/"
-                "30_processes/30.52.plagiarism.html#resources)"
-                f"- [ ] Create the review, using `labot thesis --grade`"
-                f"- [ ] Print/sign/submit the review"
-                f"- [ ] Invite student to the feedback session"
+                "30_processes/30.52.plagiarism.html#resources)\n"
+                f"- [ ] Create the review, using `labot thesis --grade`\n"
+                f"- [ ] Print/sign/submit the review\n"
+                f"- [ ] Invite student to the feedback session\n"
             )
             new_submission.create_comment(reply_body)
 

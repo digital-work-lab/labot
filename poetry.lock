@@ -1592,6 +1592,40 @@ test = ["hypothesis (>=6.46.1)", "pytest (>=7.3.2)", "pytest-xdist (>=2.2.0)"]
 xml = ["lxml (>=4.9.2)"]
 
 [[package]]
+name = "pdfannots"
+version = "0.5"
+description = "Tool to extract and pretty-print PDF annotations for reviewing"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "pdfannots-0.5-py3-none-any.whl", hash = "sha256:195aa95c702eb18511741733a862d8c4fa1f136677c3e95aa7c021679ba588bd"},
+    {file = "pdfannots-0.5.tar.gz", hash = "sha256:75da28053efa64980763b7b4891f14887d3d316f8273fcf4d02b593bbf57089c"},
+]
+
+[package.dependencies]
+pdfminer-six = ">=20220319,<20240706 || >20240706"
+
+[[package]]
+name = "pdfminer-six"
+version = "20231228"
+description = "PDF parser and analyzer"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "pdfminer.six-20231228-py3-none-any.whl", hash = "sha256:e8d3c3310e6fbc1fe414090123ab01351634b4ecb021232206c4c9a8ca3e3b8f"},
+    {file = "pdfminer.six-20231228.tar.gz", hash = "sha256:6004da3ad1a7a4d45930cb950393df89b068e73be365a6ff64a838d37bcb08c4"},
+]
+
+[package.dependencies]
+charset-normalizer = ">=2.0.0"
+cryptography = ">=36.0.0"
+
+[package.extras]
+dev = ["black", "mypy (==0.931)", "nox", "pytest"]
+docs = ["sphinx", "sphinx-argparse"]
+image = ["Pillow"]
+
+[[package]]
 name = "pillow"
 version = "11.1.0"
 description = "Python Imaging Library (Fork)"
@@ -2883,4 +2917,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.13"
-content-hash = "eb8ae26b9780e2865b29efc45cf946a5fcb9deebe84e23c2ec2f6c50ba3c4c46"
+content-hash = "ac19323c8485844fe94e538572316ac6ba607365620c79a7aac288825d4d8951"
