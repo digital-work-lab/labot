@@ -59,8 +59,6 @@ def onboard(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
         repo=template,
         private=True,
         description=f"✅ Agenda repository for {new_user}",
-        has_issues=True,
-        has_wiki=False,
 
     )
     # new_repo = org.create_repo(
