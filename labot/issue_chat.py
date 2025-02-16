@@ -56,7 +56,7 @@ def onboard(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
     template = github_client.get_repo(template_repo)
     new_repo = org.create_repo_from_template(
         name=new_repo_name,
-        template_repo=template,
+        repo=template,
         private=True,
         description=f"✅ Agenda repository for {new_user}",
         has_issues=True,
