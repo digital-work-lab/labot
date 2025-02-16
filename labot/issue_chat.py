@@ -13,7 +13,6 @@ from exchangelib import FileAttachment
 from exchangelib import Message
 from git import Repo
 from github import Github
-from github import Issue
 from github.Issue import Issue
 
 import labot.monitor_email
@@ -28,16 +27,16 @@ import labot.utils
 # create an issue in the agenda repository with the checklist (sholud be in templates dir)
 
 
-def onboard(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
+def onboard(
+    local_repo: Repo, github_repo: Github, issue: Issue, comment_text: str
+) -> None:
     """
     Onboard a new user by creating an agenda repository from a template,
     adding contributors, and creating an onboarding issue.
     """
-    # Extract the issue text
-    issue_body = issue.body
 
     # Determine the username from the issue text
-    match = re.search(r"@digital-work-labot onboard (\S+)", issue_body)
+    match = re.search(r"@digital-work-labot onboard (\S+)", comment_text)
     if not match:
         print("No username found in issue text. Exiting.")
         return
@@ -47,7 +46,6 @@ def onboard(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
     template_repo = "digital-work-lab/agenda_template"
     org_name = "digital-work-lab"
     new_repo_name = f"agenda_gerit_{new_user}"
-
 
     # Create a new repository from the template
     github_client = Github(os.getenv("GITHUB_TOKEN"))
@@ -59,7 +57,6 @@ def onboard(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
         repo=template,
         private=True,
         description=f"✅ Agenda repository for {new_user}",
-
     )
     # new_repo = org.create_repo(
     #     name=new_repo_name,
@@ -74,7 +71,7 @@ def onboard(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
     new_repo.replace_topics(["agenda"])
 
     # Add contributors
-    contributors = ["geritwagner", "Stella1234-design", new_user]
+    contributors = ["geritwagner", new_user]  # TODO : "Stella1234-design"
     for contributor in contributors:
         new_repo.add_to_collaborators(contributor, permission="push")
 
@@ -98,7 +95,9 @@ def onboard(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
     issue.edit(state="closed")
 
 
-def new_semester(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
+def new_semester(
+    local_repo: Repo, github_repo: Github, issue: Issue, comment_text: str
+) -> None:
     issue.create_comment("I will create a branch and set up a new semester for you 🛠️")
     # create branch "new_semester" in local_repo
     local_repo.git.checkout("main")
@@ -136,7 +135,7 @@ def new_semester(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
 
 
 def thesis_registration_accept(
-    local_repo: Repo, github_repo: Github, issue: Issue
+    local_repo: Repo, github_repo: Github, issue: Issue, comment_text: str
 ) -> None:
     def extract_branch_name(issue_body: str) -> str:
         """
@@ -364,7 +363,7 @@ def comment(local_repo: Repo, github_repo: Github, event_data: dict) -> None:
 
     for command in COMMANDS:
         if comment_text.startswith(command):
-            COMMANDS[command](local_repo, github_repo, issue)
+            COMMANDS[command](local_repo, github_repo, issue, comment_text)
             break
     else:
         issue.create_comment(
