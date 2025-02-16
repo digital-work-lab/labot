@@ -48,17 +48,29 @@ def onboard(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
     org_name = "digital-work-lab"
     new_repo_name = f"agenda_gerit_{new_user}"
 
+    template = github_client.get_repo(template_repo)
+
     # Create a new repository from the template
     github_client = Github(os.getenv("GITHUB_TOKEN"))
     org = github_client.get_organization(org_name)
-    new_repo = org.create_repo(
+
+    new_repo = org.create_repo_from_template(
         name=new_repo_name,
+        template_repo=template,
         private=True,
         description=f"Agenda repository for {new_user}",
-        template_repo=github_client.get_repo(template_repo),
         has_issues=True,
         has_wiki=False,
+
     )
+    # new_repo = org.create_repo(
+    #     name=new_repo_name,
+    #     private=True,
+    #     description=f"Agenda repository for {new_user}",
+    #     template_repo=github_client.get_repo(template_repo),
+    #     has_issues=True,
+    #     has_wiki=False,
+    # )
 
     # Update the repository with new topics
     new_repo.replace_topics(["agenda"])
