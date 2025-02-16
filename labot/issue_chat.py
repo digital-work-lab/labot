@@ -349,8 +349,10 @@ def comment(local_repo: Repo, github_repo: Github, event_data: dict) -> None:
         "@digital-work-labot accept thesis registration": thesis_registration_accept,
     }
 
-    if comment_text in COMMANDS:
-        COMMANDS[comment_text](local_repo, github_repo, issue)
+    for command in COMMANDS:
+        if comment_text.startswith(command):
+            COMMANDS[command](local_repo, github_repo, issue)
+            break
     else:
         issue.create_comment(
             f"I'm sorry, I don't understand this command. \n Options:\n {COMMANDS.keys()}"
