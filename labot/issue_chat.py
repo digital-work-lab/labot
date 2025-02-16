@@ -344,6 +344,7 @@ def comment(local_repo: Repo, github_repo: Github, event_data: dict) -> None:
         return
 
     COMMANDS = {
+        "@digital-work-labot onboard": onboard,
         "@digital-work-labot create new semester": new_semester,
         "@digital-work-labot accept thesis registration": thesis_registration_accept,
     }
