@@ -14,9 +14,75 @@ from exchangelib import Message
 from git import Repo
 from github import Github
 from github import Issue
+from github.Issue import Issue
 
 import labot.monitor_email
 import labot.utils
+# def onboard(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
+# Check: issue authored by geritwagner, otherwise: exit
+# get the text of the issue
+# determine username (@digital-work-labot onboard USERNAME)
+# create agenda repository based on template https://github.com/digital-work-lab/agenda_template
+# add geritwagner and Stella1234-design as contributors
+# create an issue in the agenda repository with the checklist (sholud be in templates dir)
+
+
+def onboard(local_repo: Repo, github_client: Github, issue: Issue) -> None:
+    """
+    Onboard a new user by creating an agenda repository from a template,
+    adding contributors, and creating an onboarding issue.
+    """
+    # Extract the issue text
+    issue_body = issue.body
+
+    # Determine the username from the issue text
+    match = re.search(r"@digital-work-labot onboard (\S+)", issue_body)
+    if not match:
+        print("No username found in issue text. Exiting.")
+        return
+    new_user = match.group(1)
+
+    # Define necessary repository information
+    template_repo = "digital-work-lab/agenda_template"
+    org_name = "digital-work-lab"
+    new_repo_name = f"agenda_gerit_{new_user}"
+
+    # TODO : add topics
+
+    # Create a new repository from the template
+    org = github_client.get_organization(org_name)
+    new_repo = org.create_repo(
+        name=new_repo_name,
+        private=True,
+        description=f"Agenda repository for {new_user}",
+        template_repo=github_client.get_repo(template_repo),
+        has_issues=True,
+        has_wiki=False,
+    )
+
+    # Add contributors
+    contributors = ["geritwagner", "Stella1234-design", new_user]
+    for contributor in contributors:
+        new_repo.add_to_collaborators(contributor, permission="push")
+
+    # Retrieve checklist template using Jinja
+    template = labot.utils.get_template("onboarding_checklist.md.j2")
+    checklist_issue_body = template.render(username=new_user)
+
+    # Create an issue in the new agenda repository
+    checklist_issue = new_repo.create_issue(
+        title="Onboarding Checklist",
+        body=checklist_issue_body,
+        assignee=new_user,
+    )
+
+    # Comment in the original issue with the agenda repo link and checklist issue link
+    issue.create_comment(
+        f"Onboarding user: {new_user}\n\nAgenda Repository: {new_repo.html_url}\n\nChecklist Issue: {checklist_issue.html_url}"
+    )
+
+    # Close the original onboarding issue
+    issue.edit(state="closed")
 
 
 def new_semester(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
