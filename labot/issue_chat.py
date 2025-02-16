@@ -18,6 +18,7 @@ from github.Issue import Issue
 
 import labot.monitor_email
 import labot.utils
+
 # def onboard(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
 # Check: issue authored by geritwagner, otherwise: exit
 # get the text of the issue
@@ -27,7 +28,7 @@ import labot.utils
 # create an issue in the agenda repository with the checklist (sholud be in templates dir)
 
 
-def onboard(local_repo: Repo, github_client: Github, issue: Issue) -> None:
+def onboard(local_repo: Repo, github_repo: Github, issue: Issue) -> None:
     """
     Onboard a new user by creating an agenda repository from a template,
     adding contributors, and creating an onboarding issue.
@@ -47,9 +48,8 @@ def onboard(local_repo: Repo, github_client: Github, issue: Issue) -> None:
     org_name = "digital-work-lab"
     new_repo_name = f"agenda_gerit_{new_user}"
 
-    # TODO : add topics
-
     # Create a new repository from the template
+    github_client = Github(os.getenv("GITHUB_TOKEN"))
     org = github_client.get_organization(org_name)
     new_repo = org.create_repo(
         name=new_repo_name,
@@ -59,6 +59,9 @@ def onboard(local_repo: Repo, github_client: Github, issue: Issue) -> None:
         has_issues=True,
         has_wiki=False,
     )
+
+    # Update the repository with new topics
+    new_repo.replace_topics(["agenda"])
 
     # Add contributors
     contributors = ["geritwagner", "Stella1234-design", new_user]
