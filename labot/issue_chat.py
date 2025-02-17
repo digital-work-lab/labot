@@ -74,10 +74,10 @@ def onboard(
     contributors = ["geritwagner", new_user]  # TODO : "Stella1234-design"
     for contributor in contributors:
         new_repo.add_to_collaborators(contributor, permission="push")
-
+    repo_html_url = new_repo.html_url
     # Retrieve checklist template using Jinja
     template = labot.utils.get_template("onboarding_checklist.md.j2")
-    checklist_issue_body = template.render(username=new_user)
+    checklist_issue_body = template.render(username=new_user, repo_url=repo_html_url)
 
     # Create an issue in the new agenda repository
     checklist_issue = new_repo.create_issue(
