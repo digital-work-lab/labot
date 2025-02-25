@@ -108,7 +108,7 @@ class Thesis:
         # Work progress section
         gantt_chart.append("    section Work Progress")
 
-        if datetime.now() > work_end_date:
+        if datetime.now() > work_end_date or self.status == "submitted":
             gantt_chart.append(
                 f"    Work Time ({self.work_time_months} months): done, {self.date_of_registration}, {work_time_days}d"
             )
