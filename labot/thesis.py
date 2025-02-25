@@ -425,7 +425,7 @@ def generate_gantt(theses: list, local_repo: Repo) -> None:
         work_end_date = datetime.strptime(thesis.deadline_submission, "%Y-%m-%d")
         work_time_days = (work_end_date - registration_date).days
 
-        if datetime.now() > work_end_date:
+        if datetime.now() > work_end_date or thesis.status == "submitted":
             gantt_chart.append(
                 f"    {thesis.work_time_months} months: done, {thesis.date_of_registration}, {work_time_days}d"
             )
