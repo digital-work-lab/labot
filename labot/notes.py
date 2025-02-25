@@ -55,6 +55,7 @@ def get_pdf_highlights(pdf_path, grouped=True):
     """Extracts annotations from a PDF and returns them in Markdown format."""
     from pdfannots import process_file
     from pdfannots.printer.markdown import MarkdownPrinter, GroupedMarkdownPrinter
+
     # Choose printer (GroupedMarkdownPrinter groups highlights into sections)
     printer = GroupedMarkdownPrinter() if grouped else MarkdownPrinter()
 
@@ -67,6 +68,7 @@ def get_pdf_highlights(pdf_path, grouped=True):
     output += printer.end()
 
     return output
+
 
 def create_paper_summary(missing_paper_summary: dict, references: dict) -> None:
 

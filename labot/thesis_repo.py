@@ -419,9 +419,9 @@ class ThesisRepo:
 
             input("save as submission.pdf")
             submission_pdf = Path.cwd() / "submission.pdf"
-            submission_pdf = Path(
-                "/home/gerit/ownCloud/data/teaching/theses-confidential/submissions/028_Klarmann_Jessica_Petra.pdf"
-            )
+            # submission_pdf = Path(
+            #     "/home/gerit/ownCloud/data/teaching/theses-confidential/submissions/028_Klarmann_Jessica_Petra.pdf"
+            # )
 
             text = self._extract_text_from_pdf(submission_pdf)
 
