@@ -196,8 +196,15 @@ class Thesis:
             return
         print(f"Notify {self.student} for inactivity")
         issue_title = f"Thesis Inactivity: {self.student}"
-        template = labot.utils.get_template("thesis_inactivity_issue.md.j2")
 
+        # Check if an issue with this title already exists
+        existing_issues = github_repo.get_issues(state="open")
+        for issue in existing_issues:
+            if issue.title == issue_title:
+                print("Issue already exists. Skipping creation.")
+                return
+
+        template = labot.utils.get_template("thesis_inactivity_issue.md.j2")
         github_repo.create_issue(
             title=issue_title,
             body=template.render(self.to_dict()),
