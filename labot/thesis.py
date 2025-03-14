@@ -348,7 +348,7 @@ def generate_review() -> None:
 
     document_1.merge(**metadata)
     document_1.write(
-        f'{str(date.today())}-{metadata["thesis_id"]}-{metadata["candidate"].replace(" ", "_")}_Gutachten.docx'
+        f'{str(date.today())}-{metadata["thesis_id"]}-{metadata["candidate"].replace(" ", "_").replace(",","")}_Gutachten.docx'
     )
 
 
