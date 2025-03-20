@@ -2,6 +2,7 @@
 """Command-line interface for CoLRev."""
 from __future__ import annotations
 
+import subprocess
 import webbrowser
 from datetime import date
 from datetime import datetime
@@ -243,7 +244,7 @@ def get_thesis() -> Thesis:
 
     theses_data = load_theses(
         theses_path=Path(
-            "/home/gerit/ownCloud/data/teaching/theses-confidential/theses"
+            "/home/gerit/ownCloud/data/teaching/theses/theses-confidential/theses"
         )
     )
 
@@ -285,6 +286,8 @@ https://digital-work-lab.github.io/handbook/docs/30-teaching/30_processes/30.40.
 
 <!-- Summary paragraph -->
 
+The thesis, "{thesis.title}" by {thesis.formatted_student()}, ...
+
 <!-- Formal requirements summary -->
 
 <!-- Main criteria summary: process -->
@@ -299,15 +302,17 @@ The main shortcomings are ...
 Overall, I therefore recommend a grade of XXXXX for {thesis.formatted_student()}'s {thesis.level.capitalize()}'s thesis.
 """
 
-    with open("review.md", "w") as review_file:
+    with open(thesis.filename, "w") as review_file:
         review_file.write(review_content)
 
     webbrowser.open_new_tab(THESIS_DOCS_URL)
+    # open the thesis.filename in the default editor
+    subprocess.run(["code", thesis.filename])
 
 
-def generate_review() -> None:
+def generate_review(thesis: Thesis) -> None:
     # Read the Markdown file
-    with open("review.md") as file:
+    with open(thesis.filename) as file:
         content = file.read()
 
     # Separate frontmatter and body
@@ -353,17 +358,24 @@ def generate_review() -> None:
 
 
 def grade() -> None:
-    review_file = Path("review.md")
+    # assert that the current dir is .../theses-confidential/reviews
+    assert (
+        Path.cwd().name == "reviews"
+    ), "Please run this command from the reviews directory."
 
-    if not review_file.exists():
-        thesis = get_thesis()
+    thesis = get_thesis()
+
+    if not Path(thesis.filename).exists():
         print(thesis)
         create_review_file(thesis)
-        print(f"Created review file: {review_file}")
+        print(f"Created review file: {thesis.filename}")
         return
 
-    print(f"Selected review file: {review_file}")
-    generate_review()
+    if "y" == input("Grading completed? (y/n)"):
+        print("Grading completed.")
+        print(f"Selected review file: {thesis.filename}")
+        generate_review(thesis)
+        # TODO : set status to archived
 
 
 def load_theses(theses_path: Path = Path("theses")) -> list:
