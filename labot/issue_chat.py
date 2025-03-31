@@ -71,7 +71,7 @@ def onboard(
     new_repo.replace_topics(["agenda"])
 
     # Add contributors
-    contributors = ["geritwagner", new_user]  # TODO : "Stella1234-design"
+    contributors = ["geritwagner", new_user, "Stella1234-design"]
     for contributor in contributors:
         new_repo.add_to_collaborators(contributor, permission="push")
     repo_html_url = new_repo.html_url
@@ -83,7 +83,8 @@ def onboard(
     checklist_issue = new_repo.create_issue(
         title="Onboarding Checklist",
         body=checklist_issue_body,
-        assignee=new_user,
+        # Do not set assignee to avoid 422 error (repo invitation not yet accepted)
+        # assignee=new_user,
     )
 
     # Comment in the original issue with the agenda repo link and checklist issue link
