@@ -89,7 +89,8 @@ def onboard(
 
     # Comment in the original issue with the agenda repo link and checklist issue link
     issue.create_comment(
-        f"Onboarding user: {new_user}\n\nAgenda Repository: {new_repo.html_url}\n\nChecklist Issue: {checklist_issue.html_url}"
+        f"Onboarding user: {new_user}\n\nAgenda Repository: {new_repo.html_url}\n\nChecklist Issue: {checklist_issue.html_url}\n\n "
+        f"@{new_user}, you should have received invitations to the repository via e-mail. \n\n"
     )
 
     # Close the original onboarding issue
