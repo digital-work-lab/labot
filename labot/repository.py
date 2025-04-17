@@ -458,19 +458,33 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
 
             # Note: trigger on status changes because this is what users are aware of
             if paper.just_published():
+                issue_title = "Paper published"
+                # Check if an issue with this title already exists
+                existing_issues = self.github_repo.get_issues(state="open")
+                for issue in existing_issues:
+                    if issue.title == issue_title:
+                        print("Issue already exists. Skipping creation.")
+                        return
                 template = labot.utils.get_template("paper_published_issue.md.j2")
                 issue = self.github_repo.create_issue(
-                    title="Paper published",
+                    title=issue_title,
                     body=template.render(),
                     assignee="geritwagner",
                 )
                 print(f"Issue created: {issue.html_url}")
 
             if paper.just_submitted():
+                issue_title = "Paper submitted"
+                # Check if an issue with this title already exists
+                existing_issues = self.github_repo.get_issues(state="open")
+                for issue in existing_issues:
+                    if issue.title == issue_title:
+                        print("Issue already exists. Skipping creation.")
+                        return
                 print("Just submitted, create issue")
                 template = labot.utils.get_template("paper_submitted_issue.md.j2")
                 issue = self.github_repo.create_issue(
-                    title="Paper submitted",
+                    title=issue_title,
                     body=template.render(),
                     assignee="geritwagner",
                 )
