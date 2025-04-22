@@ -873,7 +873,7 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
         current_month = datetime.now().strftime("%Y-%m")
         x_axis.append(current_month)
         bar_data.append(currently)
-        line_data.append(8)  # Fixed capacity
+        line_data.append(5)  # Fixed capacity
 
         # Regenerate the chart
         updated_chart = f"""{'{: .text-center}'}
