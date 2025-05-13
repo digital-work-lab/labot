@@ -75,7 +75,10 @@ def create_paper_summary(missing_paper_summary: dict, references: dict) -> None:
     paper_metadata = references[missing_paper_summary]
     paper_summary = Path(f"papers/{missing_paper_summary}.md")
 
-    pdf_highlights = get_pdf_highlights(Path(f"pdfs/{missing_paper_summary}.pdf"))
+    paper_path = Path(f"pdfs/{missing_paper_summary}.pdf")
+    if not paper_path.exists():
+        return
+    pdf_highlights = get_pdf_highlights(paper_path)
     paper_metadata["highlights"] = pdf_highlights
 
     matching_connections = []
