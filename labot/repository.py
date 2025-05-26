@@ -458,6 +458,7 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
 
             # Note: trigger on status changes because this is what users are aware of
             if paper.just_published():
+                # TODO : generally create a create_issue() method that automatically checks whether the issue already exists!
                 issue_title = "Paper published"
                 # Check if an issue with this title already exists
                 existing_issues = self.github_repo.get_issues(state="open")
@@ -535,8 +536,10 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
 
         def validate_structure(content: str, expected_title: str) -> bool:
             """self.validate the structure of a single paper file."""
+            # TODO: crossref may update the title in references.bib
+            # leading to a mismatch in the paper note...
             # Define the expected structure template with placeholders
-            structure_template = f"# {expected_title}\n" "\n"
+            structure_template = f"# {expected_title}\n\n"
             return content.strip().startswith(structure_template.strip())
 
         errors = []

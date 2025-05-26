@@ -198,6 +198,8 @@ class Thesis:
         print(f"Notify {self.student} for inactivity")
         issue_title = f"Thesis Inactivity: {self.student}"
 
+        # TODO : extract the following to a method (check whether issue exists and only if it does not exist, create a new one)
+
         # Check if an issue with this title already exists
         existing_issues = github_repo.get_issues(state="open")
         for issue in existing_issues:

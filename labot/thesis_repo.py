@@ -501,6 +501,7 @@ class ThesisRepo:
             greading_target = date_of_actual_submission + timedelta(days=14)
             grading_deadline = date_of_actual_submission + timedelta(days=90)
 
+            # TODO : -> jinja
             print("- Respond to issue")
             reply_body = (
                 f"Thesis matched successfully!\n\n"
@@ -528,7 +529,14 @@ class ThesisRepo:
         # TODO : get the Word documents and urls (if any) (skip if url/thesis is already registered/...)
         # TODO : also skip if topic is missing or date is a problem
         # TODO : drop registrations where url is already in registered theses
-        registrations = self.get_open_registrations()
+        choice = input('Scan repos (s), add local word file (l)')
+        if choice == "s":
+            registrations = self.get_open_registrations()
+        if choice == "l":
+            registrations = [
+                {"repository": "",
+                 "word_file": "NAME  topic confirmation.docx"}
+            ]
 
         # TODO: for manually initiated issues, attach the file/have it uploaded separately (PULL-REQUEST)
 
@@ -554,6 +562,7 @@ class ThesisRepo:
         g = Github(self.GITHUB_TOKEN)
         repo = g.get_repo(self.REPO_NAME)
 
+        # TODO : instead of scanning new/open issues, we should scan the submissions directory, compare to issues (and create new issues if necessary)
         new_submissions = self._get_new_submissions(repo)
         print(f"Found {len(new_submissions)} new submissions.\n\n")
         if new_submissions:

@@ -123,6 +123,16 @@ def notes(
     labot.notes.check_notes(local_repo=local_repo)
 
 
+@main.command
+@click.pass_context
+def create_project(
+    ctx: click.core.Context,
+) -> None:
+    import labot.create_project
+
+    labot.create_project.main()
+
+
 @main.command  # (help_priority=1)
 @click.option(
     "--links",

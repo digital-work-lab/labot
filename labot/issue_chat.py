@@ -306,6 +306,9 @@ def send_thesis_registration_email_exchange(file_path: str, student_name: str):
     :param student_name: Name of the student for whom the thesis registration is being sent.
     """
 
+    # Note/problem: email and password are not set in theses-confidential!
+    # (we don't want to add teh password to all repos/labot workflows)
+
     # Load credentials (securely stored in environment variables)
     EMAIL_ADDRESS = os.getenv("EMAIL")
     EMAIL_PASSWORD = os.getenv("PASSWORD")
