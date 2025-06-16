@@ -175,7 +175,12 @@ def import_missing_references(missing_references: list, references: dict) -> Non
                     raise exc
 
         if "doi" in retrieved_record_dict:
-            retrieved_record_dict = api.query_doi(doi=retrieved_record_dict["doi"]).data
+            try:
+                retrieved_record_dict = api.query_doi(
+                    doi=retrieved_record_dict["doi"]
+                ).data
+            except colrev_exceptions.RecordNotFoundInPrepSourceException:
+                pass
 
         # remove all fields starting with "colrev_"
         retrieved_record_dict = {
