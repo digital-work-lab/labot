@@ -529,13 +529,12 @@ class ThesisRepo:
         # TODO : get the Word documents and urls (if any) (skip if url/thesis is already registered/...)
         # TODO : also skip if topic is missing or date is a problem
         # TODO : drop registrations where url is already in registered theses
-        choice = input('Scan repos (s), add local word file (l)')
+        choice = input("Scan repos (s), add local word file (l)")
         if choice == "s":
             registrations = self.get_open_registrations()
         if choice == "l":
             registrations = [
-                {"repository": "",
-                 "word_file": "NAME  topic confirmation.docx"}
+                {"repository": "", "word_file": "NAME  topic confirmation.docx"}
             ]
 
         # TODO: for manually initiated issues, attach the file/have it uploaded separately (PULL-REQUEST)

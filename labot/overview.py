@@ -1,6 +1,8 @@
-import os
-import requests
 import csv
+import os
+
+import requests
+
 
 class GitHubAccessReporter:
     def __init__(self, org):
@@ -8,7 +10,7 @@ class GitHubAccessReporter:
         self.ORG = org
         self.headers = {
             "Authorization": f"token {self.GITHUB_TOKEN}",
-            "Accept": "application/vnd.github.v3+json"
+            "Accept": "application/vnd.github.v3+json",
         }
 
     def get_paginated(self, url):
@@ -17,7 +19,7 @@ class GitHubAccessReporter:
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
             results.extend(response.json())
-            url = response.links.get('next', {}).get('url')
+            url = response.links.get("next", {}).get("url")
         return results
 
     def get_repos(self):

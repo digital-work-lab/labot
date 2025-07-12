@@ -67,6 +67,7 @@ def thesis(
     grade: bool,
     register: bool,
 ) -> None:
+    "Thesis utils (register, submissions, grade)"
 
     if grade:
         import labot.thesis
@@ -103,6 +104,7 @@ def paper(
     init: bool,
     prep: bool,
 ) -> None:
+    "Paper utils (init, prep, ...)"
     import labot.paper
 
     if init:
@@ -116,6 +118,7 @@ def paper(
 def notes(
     ctx: click.core.Context,
 ) -> None:
+    """Process notes (e.g., work_hub)"""
     import labot.notes
 
     local_repo = Repo(Path.cwd())
@@ -128,6 +131,7 @@ def notes(
 def create_project(
     ctx: click.core.Context,
 ) -> None:
+    "Create a project (directory)"
     import labot.create_project
 
     labot.create_project.main()
@@ -144,21 +148,11 @@ def handbook(
     ctx: click.core.Context,
     links: bool,
 ) -> None:
+    "Handbook checks"
     import labot.handbook
 
     if links:
         labot.handbook.link_check()
-
-
-@main.command()
-@click.pass_context
-def check(
-    ctx: click.core.Context,
-) -> None:
-    """Check"""
-    import labot.check
-
-    labot.check.main()
 
 
 @main.command()

@@ -3,10 +3,10 @@ import datetime
 import math
 import os
 import re
-import shutil
 from pathlib import Path
 
 # from time import time, gmtime, strftime
+
 
 def get_project_path_dir(project_name, year_quartal_prefix):
     # project_path_dir = input("Path of directory:")
@@ -25,9 +25,9 @@ def get_project_path_dir(project_name, year_quartal_prefix):
         re.match(re.compile(r"\d{4}_Q\d_"), x) is not None for x in existing_directories
     ]
     if len(directories_matching_yyyy_qn) > 0:
-        freq_matching_yyyy_qn = len([x for x in directories_matching_yyyy_qn if x]) / len(
-            directories_matching_yyyy_qn
-        )
+        freq_matching_yyyy_qn = len(
+            [x for x in directories_matching_yyyy_qn if x]
+        ) / len(directories_matching_yyyy_qn)
         if freq_matching_yyyy_qn > 0.8:
             project_path = project_path_dir / Path(year_quartal_prefix + project_name)
         if freq_matching_yyyy_qn > 0.3 and freq_matching_yyyy_qn <= 0.8:
@@ -35,10 +35,12 @@ def get_project_path_dir(project_name, year_quartal_prefix):
                 "Several directories with YYYY_Qn_ prefix."
                 " Prefix this project as well? (y/n)"
             ):
-                project_path = project_path_dir + "/" + year_quartal_prefix + project_name
-
+                project_path = (
+                    project_path_dir + "/" + year_quartal_prefix + project_name
+                )
 
     return project_path
+
 
 def main():
 
@@ -83,7 +85,9 @@ def main():
                 os.path.expanduser("~") + "/ownCloud/checklists/review/",
                 project_path / "peer-review-checklist",
             )
-            input('TODO: add template from https://digital-work-lab.github.io/handbook/docs/50-service/50_processes/50.10.reviewer.html')
+            input(
+                "TODO: add template from https://digital-work-lab.github.io/handbook/docs/50-service/50_processes/50.10.reviewer.html"
+            )
             # shutil.copy(
             #     os.path.expanduser("~") + "/ownCloud/checklists/review/template.md",
             #     project_path / "/wip/review.md",

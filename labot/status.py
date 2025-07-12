@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pandas as pd
 
 from labot.constants import Colors
 
@@ -52,11 +51,3 @@ def print_status() -> None:
         print(f"\n{Colors.ORANGE}{page.name}{Colors.END} ({get_url(page)})")
         for task in tasks:
             print(f"  {task}")
-
-    print()
-    print("Theses")
-
-    df = pd.read_excel(THESES_OVERVIEW, sheet_name="Bachelor-Arbeiten")
-    filtered_df = df[df["Status"] != "Bewertet"]
-    open_theses = [t for t in filtered_df["Student"].to_list() if not pd.isna(t)]
-    print("- [ ] " + "\n- [ ] ".join(open_theses))
