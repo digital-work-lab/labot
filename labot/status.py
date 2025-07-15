@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 from labot.constants import Colors
 
 HANDBOOK_PATH = Path("/home/gerit/ownCloud/data/handbook")

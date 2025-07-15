@@ -98,11 +98,17 @@ def thesis(
     is_flag=True,
     help="Prep a paper",
 )
+@click.option(
+    "--revise",
+    is_flag=True,
+    help="Revise a paper",
+)
 @click.pass_context
 def paper(
     ctx: click.core.Context,
     init: bool,
     prep: bool,
+    revise: bool,
 ) -> None:
     "Paper utils (init, prep, ...)"
     import labot.paper
@@ -111,6 +117,8 @@ def paper(
         labot.paper.init()
     elif prep:
         labot.paper.prep()
+    elif revise:
+        labot.paper.revise()
 
 
 @main.command

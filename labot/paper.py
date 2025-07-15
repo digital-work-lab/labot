@@ -365,3 +365,9 @@ def prep() -> None:
 
     with open("paper.md", "w") as file:
         file.write(revised_content)
+
+
+def revise() -> None:
+    import labot.paper_revision
+
+    labot.paper_revision.main()
