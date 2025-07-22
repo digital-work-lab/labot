@@ -2,10 +2,7 @@
 """Command-line interface for Labot."""
 from __future__ import annotations
 
-from pathlib import Path
-
 import click
-from git import Repo
 
 
 @click.group()
@@ -122,16 +119,20 @@ def paper(
 
 
 @main.command
+@click.option(
+    "--github",
+    is_flag=True,
+    help="Prep notes for github (e.g., work_hub)",
+)
 @click.pass_context
-def notes(
-    ctx: click.core.Context,
-) -> None:
+def notes(ctx: click.core.Context, github: bool) -> None:
     """Process notes (e.g., work_hub)"""
     import labot.notes
 
-    local_repo = Repo(Path.cwd())
-
-    labot.notes.check_notes(local_repo=local_repo)
+    if github:
+        labot.notes.check_notes_github()
+        return
+    labot.notes.check_notes_local()
 
 
 @main.command

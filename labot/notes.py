@@ -6,14 +6,15 @@ import os
 import re
 import subprocess
 from pathlib import Path
+from typing import List
 
-import colrev.env.environment_manager
 import colrev.env.local_index
 import colrev.env.tei_parser
 import colrev.exceptions as colrev_exceptions
 import colrev.loader.load_utils
 import colrev.record.record_id_setter
 import colrev.record.record_pdf
+import git
 import inquirer
 from colrev.constants import ENTRYTYPES
 from colrev.constants import Fields
@@ -23,10 +24,13 @@ from colrev.packages.crossref.src import crossref_api
 from colrev.writer.write_utils import write_file
 from git import Actor
 from git import Repo
+from pdfannots import process_file
+from pdfannots.printer.markdown import GroupedMarkdownPrinter
+from pdfannots.printer.markdown import MarkdownPrinter
 
 import labot.utils
 
-references_file = Path("references.bib")
+
 event_name = os.getenv("GITHUB_EVENT_NAME")
 # tbd. whether the check is adequate
 local_mode = event_name is None
@@ -34,259 +38,245 @@ local_mode = event_name is None
 labot_actor = Actor("digital-work-labot", "digital-work-labot@users.noreply.github.com")
 
 
-def get_missing_references(pdfs: list, references: dict) -> list:
-    missing_references = []
-    for pdf in pdfs:
-        if pdf.stem not in references:
-            missing_references.append(pdf.stem)
-    return missing_references
-
-
-def get_missing_paper_summaries(papers_paths: list, references: dict) -> list:
-    papers = [str(paper_path.stem) for paper_path in papers_paths]
-    missing_paper_summaries = []
-    for reference in references:
-        if reference not in papers:
-            missing_paper_summaries.append(reference)
-    return missing_paper_summaries
-
-
-def get_pdf_highlights(pdf_path, grouped=True):
-    """Extracts annotations from a PDF and returns them in Markdown format."""
-    from pdfannots import process_file
-    from pdfannots.printer.markdown import MarkdownPrinter, GroupedMarkdownPrinter
-
-    # Choose printer (GroupedMarkdownPrinter groups highlights into sections)
-    printer = GroupedMarkdownPrinter() if grouped else MarkdownPrinter()
-
-    # Process the file
-    doc = process_file(open(pdf_path, "rb"))
-
-    # Generate Markdown output
-    output = printer.begin()
-    output += "".join(printer.print_file(pdf_path, doc))
-    output += printer.end()
-
-    return output
-
-
-def create_paper_summary(missing_paper_summary: dict, references: dict) -> None:
-
-    paper_metadata = references[missing_paper_summary]
-    paper_summary = Path(f"papers/{missing_paper_summary}.md")
-
-    paper_path = Path(f"pdfs/{missing_paper_summary}.pdf")
-    if not paper_path.exists():
-        return
-    pdf_highlights = get_pdf_highlights(paper_path)
-    paper_metadata["highlights"] = pdf_highlights
-
-    matching_connections = []
-    for concept in Path("concepts").iterdir():
-        concept_str = concept.stem.replace("_", " ")
-        if (
-            concept_str in paper_metadata.get("abstract", "NA").lower()
-            or concept_str in paper_metadata["title"].lower()
-        ):
-            matching_connections.append(concept.stem)
-
-    template = labot.utils.get_template("literature_note.md.j2")
-
-    with open(paper_summary, "w") as file:
-
-        rendered_content = template.render(
-            paper_metadata=paper_metadata,
-            matching_connections=matching_connections,
+class LabotNotesManager:
+    def __init__(
+        self,
+        pdf_path: Path,
+        papers_path: Path,
+        references_path: Path,
+        concepts_path: Path,
+    ):
+        self.pdf_path = pdf_path
+        self.papers_path = papers_path
+        self.references_path = references_path
+        self.concepts_path = concepts_path
+        self.references = self._load_references()
+        self.local_mode = os.getenv("GITHUB_EVENT_NAME") is None
+        self.actor = Actor(
+            "digital-work-labot", "digital-work-labot@users.noreply.github.com"
         )
-        file.write(rendered_content)
 
-        # f.write(f"# {paper_metadata['title']}\n\n")
-        # f.write(f"## Abstract\n\n{paper_metadata.get('abstract', 'no-abstract')}\n\n")
-        # f.write("<Core takeaways from the research>\n\n")
-        # if matching_connections:
-        #     f.write("## Connections\n\n")
-        #     for connection in matching_connections:
-        #         f.write(f"- [[{connection}]]\n")
-        #     f.write("- [ ] Add other connections manually\n")
-        # else:
-        #     f.write(
-        #         "## Connections\n\n<Links to overarching concepts from the concepts/ directory>"
-        #     )
+    def _load_references(self) -> dict:
+        return colrev.loader.load_utils.load(filename=self.references_path)
 
+    def get_missing_references(self) -> List[str]:
+        pdfs = {pdf.stem for pdf in self.pdf_path.glob("*.pdf")}
+        return sorted(pdfs - set(self.references.keys()))
 
-def import_missing_references(missing_references: list, references: dict) -> None:
+    def get_missing_paper_summaries(self) -> List[str]:
+        papers = {p.stem for p in self.papers_path.glob("*.md")}
+        return sorted(set(self.references.keys()) - papers)
 
-    environment_manager = colrev.env.environment_manager.EnvironmentManager()
-    local_index = colrev.env.local_index.LocalIndex()
-    api = crossref_api.CrossrefAPI(params={})
+    def get_pdf_highlights(self, pdf_file: Path, grouped=True) -> str:
 
-    for missing_reference in missing_references:
-        print(f"Extracting {missing_reference}")
-        pdf_path = Path.cwd() / Path(f"pdfs/{missing_reference}.pdf")
+        printer = GroupedMarkdownPrinter() if grouped else MarkdownPrinter()
+        doc = process_file(open(pdf_file, "rb"))
+        output = printer.begin()
+        output += "".join(printer.print_file(pdf_file, doc))
+        output += printer.end()
+        return output
 
-        if not local_mode:
-            print(f"Fetching {pdf_path} using Git LFS...")
+    def create_summary(self, missing_summary: str) -> None:
+        paper_metadata = self.references[missing_summary]
+        paper_file = self.pdf_path / f"{missing_summary}.pdf"
+        output_md = self.papers_path / f"{missing_summary}.md"
+
+        if not paper_file.exists():
+            return
+
+        highlights = self.get_pdf_highlights(paper_file)
+        paper_metadata["highlights"] = highlights
+
+        connections = []
+        for concept in self.concepts_path.iterdir():
+            concept_str = concept.stem.replace("_", " ").lower()
+            if (
+                concept_str in paper_metadata.get("abstract", "").lower()
+                or concept_str in paper_metadata["title"].lower()
+            ):
+                connections.append(concept.stem)
+
+        template = labot.utils.get_template("literature_note.md.j2")
+        rendered = template.render(
+            paper_metadata=paper_metadata, matching_connections=connections
+        )
+
+        with open(output_md, "w") as file:
+            file.write(rendered)
+
+    def create_summaries(self, summaries: List[str]) -> None:
+        for sid in summaries:
+            self.create_summary(sid)
+
+    def import_missing_references(self, missing_refs: List[str]) -> None:
+        local_index = colrev.env.local_index.LocalIndex()
+        api = crossref_api.CrossrefAPI(params={})
+
+        for ref_id in missing_refs:
+            pdf_file = self.pdf_path / f"{ref_id}.pdf"
+            if not pdf_file.exists():
+                continue
+
+            if not self.local_mode:
+                try:
+                    subprocess.run(
+                        ["git", "lfs", "pull", "--include", str(pdf_file)], check=True
+                    )
+                except subprocess.CalledProcessError:
+                    continue
+
             try:
-                subprocess.run(
-                    ["git", "lfs", "pull", "--include", str(pdf_path)], check=True
+                colrev_pdf_id = colrev.record.record_identifier.get_colrev_pdf_id(
+                    pdf_file
                 )
-                print(f"Successfully fetched: {pdf_path}")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to fetch {pdf_path}. Error: {e}")
-
-        try:
-            colrev_pdf_id = colrev.record.record_identifier.get_colrev_pdf_id(pdf_path)
-            new_record_object = local_index.retrieve_based_on_colrev_pdf_id(
-                colrev_pdf_id=colrev_pdf_id
-            )
-            retrieved_record_dict = new_record_object.data
-
-        except (
-            colrev_exceptions.RecordNotInIndexException,
-            colrev_exceptions.InvalidPDFException,
-        ):
-
-            try:
-                tei = colrev.env.tei_parser.TEIParser(
-                    environment_manager=environment_manager,
-                    pdf_path=pdf_path,
+                record_obj = local_index.retrieve_based_on_colrev_pdf_id(
+                    colrev_pdf_id=colrev_pdf_id
                 )
-                retrieved_record_dict = tei.get_metadata()
-            except colrev_exceptions.TEIException:
-                retrieved_record_dict = {
-                    Fields.ID: missing_reference,
-                    Fields.ENTRYTYPE: ENTRYTYPES.ARTICLE,
-                    Fields.FILE: pdf_path,
-                }
+                record = record_obj.data
+            except (
+                colrev_exceptions.RecordNotInIndexException,
+                colrev_exceptions.InvalidPDFException,
+            ):
+                try:
+                    tei = colrev.env.tei_parser.TEIParser(pdf_path=pdf_file)
+                    record = tei.get_metadata()
+                except Exception:
+                    record = {
+                        Fields.ID: ref_id,
+                        Fields.ENTRYTYPE: ENTRYTYPES.ARTICLE,
+                        Fields.FILE: pdf_file,
+                    }
 
                 try:
-                    record = colrev.record.record_pdf.PDFRecord(
-                        retrieved_record_dict, path=pdf_path.parent
+                    pdf_rec = colrev.record.record_pdf.PDFRecord(
+                        record, path=pdf_file.parent
                     )
-                    _doi_regex = re.compile(r"10\.\d{4,9}/[-._;/:A-Za-z0-9]*")
-                    if Fields.DOI not in retrieved_record_dict:
-                        record.set_text_from_pdf()
-                        res = re.findall(_doi_regex, record.data[Fields.TEXT_FROM_PDF])
-                        if res:
-                            record.data[Fields.DOI] = res[0].upper()
-                    record.data.pop(Fields.TEXT_FROM_PDF, None)
-                    record.data.pop(Fields.NR_PAGES_IN_FILE, None)
-                except colrev_exceptions.InvalidPDFException as exc:
-                    raise exc
+                    if Fields.DOI not in record:
+                        pdf_rec.set_text_from_pdf()
+                        match = re.findall(
+                            r"10\.\d{4,9}/[-._;/:A-Za-z0-9]*",
+                            pdf_rec.data.get(Fields.TEXT_FROM_PDF, ""),
+                        )
+                        if match:
+                            record[Fields.DOI] = match[0].upper()
+                    record.pop(Fields.TEXT_FROM_PDF, None)
+                    record.pop(Fields.NR_PAGES_IN_FILE, None)
+                except colrev_exceptions.InvalidPDFException:
+                    continue
 
-        if "doi" in retrieved_record_dict:
+            if Fields.DOI in record:
+                try:
+                    record = api.query_doi(doi=record[Fields.DOI]).data
+                except colrev_exceptions.RecordNotFoundInPrepSourceException:
+                    pass
+
+            record = {k: v for k, v in record.items() if not k.startswith("colrev")}
+            record.pop("curation_ID", None)
+            record.pop("language", None)
+
+            id_setter = colrev.record.record_id_setter.IDSetter(
+                id_pattern=IDPattern.three_authors_year, skip_local_index=False
+            )
+            record[Fields.STATUS] = RecordState.md_imported
+            updated = id_setter.set_ids(records={"record": record})
+            record = next(iter(updated.values()))
+            record.pop(Fields.STATUS, None)
+            record.setdefault("ID", ref_id)
+
+            self.references[record["ID"]] = record
+
             try:
-                retrieved_record_dict = api.query_doi(
-                    doi=retrieved_record_dict["doi"]
-                ).data
-            except colrev_exceptions.RecordNotFoundInPrepSourceException:
-                pass
+                new_pdf = self.pdf_path / f"{record['ID']}.pdf"
+                note_md = self.papers_path / f"{ref_id}.md"
+                summary_md = self.papers_path / f"{record['ID']}.md"
 
-        # remove all fields starting with "colrev_"
-        retrieved_record_dict = {
-            key: value
-            for key, value in retrieved_record_dict.items()
-            if not key.startswith("colrev")
-        }
-        # also remove curation_ID and language
-        retrieved_record_dict.pop("curation_ID", None)
-        retrieved_record_dict.pop("language", None)
-        id_setter = colrev.record.record_id_setter.IDSetter(
-            id_pattern=IDPattern.three_authors_year,
-            skip_local_index=False,
-        )
-        retrieved_record_dict[Fields.STATUS] = RecordState.md_imported
-        updated_record = id_setter.set_ids(
-            records={"record": retrieved_record_dict},
-        )
+                if pdf_file != new_pdf:
+                    pdf_file.rename(new_pdf)
+                if note_md.exists():
+                    note_md.rename(summary_md)
+            except Exception as e:
+                print(f"Rename failed: {e}")
 
-        retrieved_record_dict = next(iter(updated_record.values()))
-        retrieved_record_dict.pop(Fields.STATUS, None)
+        write_file(records_dict=self.references, filename=self.references_path)
 
-        if "ID" not in retrieved_record_dict:
-            retrieved_record_dict["ID"] = missing_reference
+    def finalize_git_commit(self, ref_ids: List[str], summary_ids: List[str]) -> None:
+        repo = Repo(Path.cwd())
 
-        # TODO : if it already exists?!
-        references[retrieved_record_dict["ID"]] = retrieved_record_dict
-
-        new_file = (
-            Path.cwd() / Path("pdfs") / Path(f"{retrieved_record_dict['ID']}.pdf")
-        )
-        note_file = Path.cwd() / Path("papers") / Path(f"{missing_reference}.md")
-        summary_file = (
-            Path.cwd() / Path("papers") / Path(f"{retrieved_record_dict['ID']}.md")
-        )
+        if self.local_mode and repo.active_branch.name == "main":
+            choices = sorted(
+                list(set(["main", "Create new branch"] + ref_ids + summary_ids))
+            )
+            selected = inquirer.prompt(
+                [
+                    inquirer.List(
+                        "branch",
+                        message="Select the branch to work on",
+                        choices=choices,
+                    )
+                ]
+            )
+            if selected:
+                branch = selected["branch"]
+                if branch == "Create new branch":
+                    branch = input("Enter branch name: ")
+                    repo.git.checkout("main")
+                    repo.git.checkout("-b", branch)
+                else:
+                    repo.git.checkout("-b", branch)
 
         try:
-            pdf_path.rename(new_file)
-            if note_file.exists():
-                note_file.rename(summary_file)
-            if pdf_path != new_file:
-                print(f"Renamed file: {pdf_path} -> {new_file}")
-        except Exception as e:
-            print(f"Error renaming file: {e}")
-
-    write_file(records_dict=references, filename=references_file)
-
-
-def check_notes(local_repo: Repo = None) -> None:
-
-    pdfs = list(Path("pdfs").iterdir())
-    papers = list(Path("papers").iterdir())
-    # concepts = list(Path('concepts').iterdir())
-
-    references = colrev.loader.load_utils.load(
-        filename=references_file,
-    )
-
-    missing_references = get_missing_references(pdfs, references)
-    import_missing_references(missing_references, references)
-
-    missing_paper_summaries = get_missing_paper_summaries(papers, references)
-    print(missing_paper_summaries)
-    for missing_paper_summary in missing_paper_summaries:
-        create_paper_summary(missing_paper_summary, references)
-
-    if not missing_references and not missing_paper_summaries:
-        return
-
-    if local_mode and local_repo.active_branch.name == "main":
-        # use inquirer library and ask to switch to a new branch
-        # Ask user which branch to switch to
-        branch_choices = (
-            missing_paper_summaries + missing_references + ["Create new branch"]
+            repo.git.add(str(self.pdf_path) + "*")
+        except git.exc.GitCommandError:
+            pass
+        repo.git.add(str(self.papers_path) + "*")
+        repo.git.add(str(self.references_path))
+        repo.index.commit(
+            "Prepare paper summaries 🚀", author=self.actor, committer=self.actor
         )
-        questions = [
-            inquirer.List(
-                "branch",
-                message="Select the branch to work on",
-                choices=list(set(branch_choices)),
+
+        if os.getenv("GITHUB_EVENT_NAME") == "pull_request":
+            repo.remotes.origin.push()
+
+    def run(
+        self, select_summaries: bool = False, add_missing_refs: bool = False
+    ) -> None:
+        if add_missing_refs:
+            missing_refs = self.get_missing_references()
+            print(f"Missing references: {len(missing_refs)}")
+            self.import_missing_references(missing_refs)
+
+        missing_summaries = self.get_missing_paper_summaries()
+        if select_summaries and missing_summaries:
+            response = inquirer.prompt(
+                [
+                    inquirer.Checkbox(
+                        "to_create",
+                        message="Select paper summaries to create",
+                        choices=missing_summaries,
+                    )
+                ]
             )
-        ]
-
-        answers = inquirer.prompt(questions)
-
-        if answers:
-            selected_branch = answers["branch"]
-            if selected_branch == "Create new branch":
-                selected_branch = input("Enter the name of the new branch: ")
-                local_repo.git.checkout("main")
-                local_repo.git.checkout("-b", selected_branch)
-                print(f"Created and switched to branch '{selected_branch}'")
-            # Switch to the selected branch
-            local_repo.git.checkout("-b", selected_branch)
-            print(f"Switched to branch '{selected_branch}'")
+            selected_summaries = response.get("to_create", [])
         else:
-            print("No branch selected.")
+            selected_summaries = missing_summaries
 
-    assert local_repo
-    local_repo.git.add("pdfs*")
-    local_repo.git.add("papers*")
-    local_repo.git.add("references.bib")
-    local_repo.index.commit(
-        "Prepare paper summaries 🚀", author=labot_actor, committer=labot_actor
-    )
+        self.create_summaries(selected_summaries)
+        self.finalize_git_commit(missing_refs, selected_summaries)
 
-    if event_name == "pull_request":
-        origin = local_repo.remotes.origin
-        origin.push()
+
+def check_notes_local() -> None:
+    LabotNotesManager(
+        pdf_path=Path("data/pdfs"),
+        papers_path=Path("data/obsidian/paper"),
+        references_path=Path("data/records.bib"),
+        concepts_path=Path("data/obsidian/concepts"),
+    ).run(select_summaries=True)
+
+
+def check_notes_github() -> None:
+    LabotNotesManager(
+        pdf_path=Path("pdfs"),
+        papers_path=Path("papers"),
+        references_path=Path("references.bib"),
+        concepts_path=Path("concepts"),
+    ).run(select_summaries=False, add_missing_refs=True)
