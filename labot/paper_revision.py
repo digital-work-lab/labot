@@ -48,11 +48,13 @@ def parse_comments(lines):
         if line.startswith("# "):
             # Save the previous comment if we were working on one
             if current_id is not None:
+                comment_str = "\n".join(current_comment).strip()
+                current_response_str = "\n".join(current_response).strip()
                 comments.append(
                     (
                         current_id,
-                        "\n".join(current_comment),
-                        "\n".join(current_response),
+                        comment_str,
+                        current_response_str,
                     )
                 )
                 current_comment, current_response = [], []  # Reset for the new section
@@ -136,7 +138,7 @@ def create_word_table(comments, output_filename="revision_table.docx"):
 
     # Add header row
     hdr_cells = table.rows[0].cells
-    hdr_cells[0].text = "Comment-number"
+    hdr_cells[0].text = "ID"
     hdr_cells[1].text = "Comment"
     hdr_cells[2].text = "Response"
 
