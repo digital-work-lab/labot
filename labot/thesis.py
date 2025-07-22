@@ -27,7 +27,7 @@ THESIS_DOCS_URL = "https://digital-work-lab.github.io/handbook/docs/30-teaching/
 class Thesis:
     def __init__(
         self,
-        filename: str,
+        id: str,
         student: str,
         student_id: str,
         level: str,
@@ -45,8 +45,7 @@ class Thesis:
         title: str,
     ):
         self.student = student
-        self.filename = filename
-        self.id = filename[:3]
+        self.id = id # [:3]
         self.student_id = student_id
         self.level = level
         self.status = status
@@ -61,6 +60,7 @@ class Thesis:
         self.plagiarism_check_result = plagiarism_check_result
         self.supervisor = supervisor
         self.title = title
+        self.review_filename = "review.md"
 
     def __str__(self) -> str:
         return f"{self.student} - {self.title} - {self.status}"
@@ -246,7 +246,7 @@ def get_thesis() -> Thesis:
 
     theses_data = load_theses(
         theses_path=Path(
-            "/home/gerit/ownCloud/data/teaching/theses/theses-confidential/theses"
+            "/home/gerit/ownCloud/data/teaching/theses/theses-confidential"
         )
     )
 
@@ -304,17 +304,17 @@ The main shortcomings are ...
 Overall, I therefore recommend a grade of XXXXX for {thesis.formatted_student()}'s {thesis.level.capitalize()}'s thesis.
 """
 
-    with open(thesis.filename, "w") as review_file:
+    with open(thesis.review_filename, "w") as review_file:
         review_file.write(review_content)
 
     webbrowser.open_new_tab(THESIS_DOCS_URL)
-    # open the thesis.filename in the default editor
-    subprocess.run(["code", thesis.filename])
+    # open the thesis.review_filename in the default editor
+    subprocess.run(["code", thesis.review_filename])
 
 
 def generate_review(thesis: Thesis) -> None:
     # Read the Markdown file
-    with open(thesis.filename) as file:
+    with open(thesis.review_filename) as file:
         content = file.read()
 
     # Separate frontmatter and body
@@ -362,20 +362,20 @@ def generate_review(thesis: Thesis) -> None:
 def grade() -> None:
     # assert that the current dir is .../theses-confidential/reviews
     assert (
-        Path.cwd().name == "reviews"
-    ), "Please run this command from the reviews directory."
+        Path.cwd().parent.name == "theses-confidential"
+    ), "Please run this command from a theses-confidential/student_name directory."
 
     thesis = get_thesis()
 
-    if not Path(thesis.filename).exists():
+    if not Path(thesis.review_filename).exists():
         print(thesis)
         create_review_file(thesis)
-        print(f"Created review file: {thesis.filename}")
+        print(f"Created review file: {thesis.review_filename}")
         return
 
     if "y" == input("Grading completed? (y/n)"):
         print("Grading completed.")
-        print(f"Selected review file: {thesis.filename}")
+        print(f"Selected review file: {thesis.review_filename}")
         generate_review(thesis)
         # TODO : set status to archived
 
@@ -383,11 +383,11 @@ def grade() -> None:
 def load_theses(theses_path: Path = Path("theses")) -> list:
     # iterate over all md files in the theses directory
     theses = []
-    for thesis_file in Path(theses_path).rglob("*.md"):
+    for thesis_file in Path(theses_path).rglob("*/notes.md"):
         # Extract YAML header and validate
         yaml_header = thesis_file.read_text().split("---")[1]
         data = yamale.make_data(content=yaml_header)
-        data[0][0]["filename"] = thesis_file.name
+        data[0][0]["id"] = thesis_file.parent.name
         # theses.append(data[0][0])
         theses.append(Thesis(**data[0][0]))
 
@@ -399,7 +399,7 @@ def update_thesis_metadata(thesis: Thesis) -> None:
     # Update the yaml metadata of the thesis
 
     # Load the file
-    thesis_file = Path("theses") / Path(thesis.filename)
+    thesis_file = Path("theses") / Path(thesis.review_filename)
     thesis_content = thesis_file.read_text()
 
     # Generate yaml header
