@@ -949,8 +949,14 @@ xychart-beta
                 custom_words = {line.strip() for line in f if line.strip()}
 
         # Initialize LanguageTool for English and German
-        tool_en = language_tool_python.LanguageTool("en-US")
-        tool_de = language_tool_python.LanguageTool("de-DE")
+        # tool_en = language_tool_python.LanguageTool("en-US")
+        # tool_de = language_tool_python.LanguageTool("de-DE")
+        tool_en = language_tool_python.LanguageToolPublicAPI(
+            "en-US", host="localhost", port=8081
+        )
+        tool_de = language_tool_python.LanguageToolPublicAPI(
+            "de-DE", host="localhost", port=8081
+        )
 
         spell_issues = []
 
