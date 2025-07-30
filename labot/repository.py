@@ -12,13 +12,12 @@ from datetime import datetime
 from pathlib import Path
 
 import colrev.loader.load_utils
+import language_tool_python
 import requests
 import yaml
 from git import Repo
 from github import Github
 from openai import OpenAI
-import language_tool_python
-
 
 import labot.issue_chat
 import labot.notes
@@ -951,11 +950,11 @@ xychart-beta
         # Initialize LanguageTool for English and German
         # tool_en = language_tool_python.LanguageTool("en-US")
         # tool_de = language_tool_python.LanguageTool("de-DE")
-        tool_en = language_tool_python.LanguageToolPublicAPI(
-            "en-US", host="localhost", port=8081
+        tool_en = language_tool_python.LanguageTool(
+            "en-US", remote_server_url="http://localhost:8081"
         )
-        tool_de = language_tool_python.LanguageToolPublicAPI(
-            "de-DE", host="localhost", port=8081
+        tool_de = language_tool_python.LanguageTool(
+            "de-DE", remote_server_url="http://localhost:8081"
         )
 
         spell_issues = []
