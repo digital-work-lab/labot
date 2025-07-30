@@ -17,6 +17,8 @@ import yaml
 from git import Repo
 from github import Github
 from openai import OpenAI
+import language_tool_python
+
 
 import labot.issue_chat
 import labot.notes
@@ -937,6 +939,76 @@ xychart-beta
         os.chdir(current_dir)
         self._generate_mermaid_chart(theses)
 
+
+
+    def run_spellcheck_and_manage_issue(self, wordlist_path=".wordlist.txt") -> None:
+        issue_title = "Spellcheck Report"
+
+        # Load custom wordlist
+        custom_words = set()
+        if Path(wordlist_path).exists():
+            with open(wordlist_path, encoding="utf-8") as f:
+                custom_words = {line.strip() for line in f if line.strip()}
+
+        # Initialize LanguageTool for English and German
+        tool_en = language_tool_python.LanguageTool('en-US')
+        tool_de = language_tool_python.LanguageTool('de-DE')
+
+        spell_issues = []
+
+        # Spellcheck all markdown/txt files
+        for root, _, files in os.walk("."):
+            for file in files:
+                if file.endswith((".md", ".txt")):
+                    path = Path(root) / file
+                    with open(path, encoding="utf-8", errors="ignore") as f:
+                        text = f.read()
+
+                    combined_matches = tool_en.check(text) + tool_de.check(text)
+                    file_issues = []
+
+                    for match in combined_matches:
+                        word = text[match.offset:match.offset + match.errorLength].strip()
+                        if word and word not in custom_words:
+                            file_issues.append(f"{word} (line {match.context_offset}): {match.message}")
+
+                    if file_issues:
+                        spell_issues.append((str(path), file_issues))
+
+        try:
+            # Get existing issue if it exists
+            issues = self.github_repo.get_issues(state="open")
+            existing_issue = next((i for i in issues if i.title == issue_title), None)
+
+            if not spell_issues:
+                if existing_issue:
+                    existing_issue.edit(state="closed")
+                    print(f"Spellcheck issue closed: {existing_issue.html_url}")
+                else:
+                    print("No spelling issues found. No open issue to close.")
+                return
+
+            # Generate markdown report
+            report_md = "## Spelling Issues Found\n"
+            for file_path, problems in spell_issues:
+                report_md += f"\n**{file_path}**\n```\n" + "\n".join(problems) + "\n```\n"
+
+            if existing_issue:
+                existing_issue.edit(body=report_md)
+                print(f"Issue updated: {existing_issue.html_url}")
+            else:
+                new_issue = self.github_repo.create_issue(
+                    title=issue_title,
+                    body=report_md,
+                    labels=["spelling", "automated issue"]
+                )
+                print(f"New issue created: {new_issue.html_url}")
+
+        except Exception as e:
+            print(f"Error managing spellcheck issue: {e}")
+
+
+
     def main(self) -> None:
         """Main function."""
         self._check_github_token_permissions()
@@ -996,6 +1068,8 @@ xychart-beta
 
         if self.REPO_NAME in ["work_hub"]:
             self._run_knowledge_repo_checks()
+        if self.REPO_NAME == "handbook":
+            self.self.run_spellcheck_and_manage_issue()
         if self.REPO_NAME == "theses":
             self._run_theses_checks()
 
