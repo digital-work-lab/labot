@@ -951,10 +951,10 @@ xychart-beta
         # tool_en = language_tool_python.LanguageTool("en-US")
         # tool_de = language_tool_python.LanguageTool("de-DE")
         tool_en = language_tool_python.LanguageTool(
-            "en-US", remote_server_url="http://localhost:8081"
+            "en-US", remote_server="http://localhost:8081"
         )
         tool_de = language_tool_python.LanguageTool(
-            "de-DE", remote_server_url="http://localhost:8081"
+            "de-DE", remote_server="http://localhost:8081"
         )
 
         spell_issues = []
