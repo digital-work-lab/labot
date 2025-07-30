@@ -939,8 +939,6 @@ xychart-beta
         os.chdir(current_dir)
         self._generate_mermaid_chart(theses)
 
-
-
     def run_spellcheck_and_manage_issue(self, wordlist_path=".wordlist.txt") -> None:
         issue_title = "Spellcheck Report"
 
@@ -951,8 +949,8 @@ xychart-beta
                 custom_words = {line.strip() for line in f if line.strip()}
 
         # Initialize LanguageTool for English and German
-        tool_en = language_tool_python.LanguageTool('en-US')
-        tool_de = language_tool_python.LanguageTool('de-DE')
+        tool_en = language_tool_python.LanguageTool("en-US")
+        tool_de = language_tool_python.LanguageTool("de-DE")
 
         spell_issues = []
 
@@ -968,9 +966,14 @@ xychart-beta
                     file_issues = []
 
                     for match in combined_matches:
-                        word = text[match.offset:match.offset + match.errorLength].strip()
+                        word = text[
+                            match.offset : match.offset + match.errorLength
+                        ].strip()
                         if word and word not in custom_words:
-                            file_issues.append(f"{word} (line {match.context_offset}): {match.message}")
+                            context = match.context.strip() if match.context else ""
+                            file_issues.append(
+                                f"{word}: {match.message} [context: {context}]"
+                            )
 
                     if file_issues:
                         spell_issues.append((str(path), file_issues))
@@ -991,7 +994,9 @@ xychart-beta
             # Generate markdown report
             report_md = "## Spelling Issues Found\n"
             for file_path, problems in spell_issues:
-                report_md += f"\n**{file_path}**\n```\n" + "\n".join(problems) + "\n```\n"
+                report_md += (
+                    f"\n**{file_path}**\n```\n" + "\n".join(problems) + "\n```\n"
+                )
 
             if existing_issue:
                 existing_issue.edit(body=report_md)
@@ -1000,14 +1005,12 @@ xychart-beta
                 new_issue = self.github_repo.create_issue(
                     title=issue_title,
                     body=report_md,
-                    labels=["spelling", "automated issue"]
+                    labels=["spelling", "automated issue"],
                 )
                 print(f"New issue created: {new_issue.html_url}")
 
         except Exception as e:
             print(f"Error managing spellcheck issue: {e}")
-
-
 
     def main(self) -> None:
         """Main function."""
