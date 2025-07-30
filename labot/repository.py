@@ -1069,7 +1069,7 @@ xychart-beta
         if self.REPO_NAME in ["work_hub"]:
             self._run_knowledge_repo_checks()
         if self.REPO_NAME == "handbook":
-            self.self.run_spellcheck_and_manage_issue()
+            self.run_spellcheck_and_manage_issue()
         if self.REPO_NAME == "theses":
             self._run_theses_checks()
 
