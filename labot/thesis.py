@@ -45,7 +45,7 @@ class Thesis:
         title: str,
     ):
         self.student = student
-        self.id = id # [:3]
+        self.id = id  # [:3]
         self.student_id = student_id
         self.level = level
         self.status = status

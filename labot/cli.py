@@ -164,6 +164,17 @@ def handbook(
         labot.handbook.link_check()
 
 
+@main.command
+@click.pass_context
+def local_cronjob(
+    ctx: click.core.Context,
+) -> None:
+    "Run local cronjob"
+    import labot.local_cron
+
+    labot.local_cron.main()
+
+
 @main.command()
 @click.pass_context
 def version(
