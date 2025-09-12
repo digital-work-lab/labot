@@ -4,6 +4,8 @@ import re
 import inquirer
 from docx import Document
 from docx.shared import Inches
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
 
 # Function to list only markdown files in the current directory, excluding paper.md and CONTRIBUTING.md
@@ -16,37 +18,67 @@ def get_files_in_current_directory():
     ]
 
 
+def _extract_status_from_comment(line: str) -> str | None:
+    """
+    Extracts a status value from a single-line HTML comment like:
+    <!-- status:open -->, <!-- status:done -->, etc.
+    Returns the status (lowercased) or None if not found.
+    """
+    if line.startswith("<!--") and line.endswith("-->"):
+        m = re.search(r"status\s*:\s*([a-zA-Z_-]+)", line, flags=re.IGNORECASE)
+        if m:
+            return m.group(1).strip().lower()
+    return None
+
+
 def parse_comments(lines):
+    """
+    Parses a markdown file into a list of tuples:
+    (id, comment_text, response_text, status)
+
+    Rules:
+    - A section starts with a line beginning "# " (the ID).
+    - 'Response' starts with the first line beginning with "> ".
+    - A single-line HTML comment <!-- status:XYZ --> *before* the response
+      sets the status for the section. The last one seen before the response wins.
+    - Multiline HTML comments (<!-- ... --> across multiple lines) are ignored.
+    """
     comments = []
     current_id = None
     current_comment = []
     current_response = []
+    current_status = None  # capture from <!-- status:... --> before response
     mode = "id"  # Tracks if we are in ID, comment, or response mode
     in_multiline_comment = False
 
-    for line in lines:
-        line = line.strip()
+    for raw_line in lines:
+        line = raw_line.rstrip("\n")
 
-        # Check for start of a multiline comment
-        if line.startswith("<!--"):
+        # Detect start/end of multiline HTML comments
+        if not in_multiline_comment and line.strip().startswith("<!--") and not line.strip().endswith("-->"):
             in_multiline_comment = True
 
-        # Check for end of a multiline comment
-        if line.endswith("-->"):
-            in_multiline_comment = False
-            continue
-
-        # Skip lines that are within a multiline comment
         if in_multiline_comment:
+            if line.strip().endswith("-->"):
+                in_multiline_comment = False
+            # ignore content inside multiline comments
             continue
 
-        # Skip single line comments
-        if line.startswith("<!--") and line.endswith("-->"):
+        stripped = line.strip()
+
+        # Single-line HTML comment (could include status)
+        if stripped.startswith("<!--") and stripped.endswith("-->"):
+            # If we haven't entered response mode yet, allow status capture
+            if mode != "response":
+                status = _extract_status_from_comment(stripped)
+                if status:
+                    current_status = status
+            # skip the comment line itself
             continue
 
         # Start of a new comment section
-        if line.startswith("# "):
-            # Save the previous comment if we were working on one
+        if stripped.startswith("# "):
+            # Save the previous comment if present
             if current_id is not None:
                 comment_str = "\n".join(current_comment).strip()
                 current_response_str = "\n".join(current_response).strip()
@@ -55,32 +87,38 @@ def parse_comments(lines):
                         current_id,
                         comment_str,
                         current_response_str,
+                        current_status or "open",
                     )
                 )
-                current_comment, current_response = [], []  # Reset for the new section
-
-            # Set the new comment ID and switch to comment mode
-            current_id = line[2:].strip()
+            # Reset for the new section
+            current_id = stripped[2:].strip()
+            current_comment = []
+            current_response = []
+            current_status = None
             mode = "comment"
+            continue
 
-        # Start of the response section
-        elif line.startswith("> "):
+        # Start of the response section (first line beginning with "> ")
+        if stripped.startswith("> "):
             mode = "response"
-            current_response.append(
-                line[2:].strip()
-            )  # Start with the first line of response text
+            current_response.append(stripped[2:].strip())
+            continue
 
-        # Append lines to the current section (comment or response)
-        else:
-            if mode == "comment":
-                current_comment.append(line)
-            elif mode == "response":
-                current_response.append(line)
+        # Accumulate content
+        if mode == "comment":
+            current_comment.append(stripped)
+        elif mode == "response":
+            current_response.append(stripped)
 
     # Append the last collected comment and response after the loop
     if current_id is not None:
         comments.append(
-            (current_id, "\n".join(current_comment), "\n".join(current_response))
+            (
+                current_id,
+                "\n".join(current_comment).strip(),
+                "\n".join(current_response).strip(),
+                current_status or "open",
+            )
         )
 
     return comments
@@ -89,36 +127,59 @@ def parse_comments(lines):
 def add_markdown_text(paragraph, text):
     """Adds text with Markdown-style bold and italic formatting to a Word paragraph."""
     # Patterns for bold (**text** or __text__) and italic (*text* or _text_)
-    bold_italic_pattern = re.compile(r"(\*\*\*)(.*?)\1")  # Matches ***bold italic***
-    bold_pattern = re.compile(r"(\*\*|__)(.*?)\1")  # Matches **bold** or __bold__
-    italic_pattern = re.compile(r"(\*|_)(.*?)\1")  # Matches *italic* or _italic_
-
-    # Keep track of the position in text
+    # Note: We treat ***...*** as bold+italic
     pos = 0
-    for match in re.finditer(r"(\*\*\*|__|\*\*|\*|_)(.+?)\1", text):
-        # Add text before the match
+    for match in re.finditer(r"(\*\*\*|___|__|\*\*|\*|_)(.+?)\1", text):
         if match.start() > pos:
-            paragraph.add_run(text[pos : match.start()])
+            paragraph.add_run(text[pos: match.start()])
 
-        style = match.group(1)  # Markdown style found (** or *)
-        matched_text = match.group(2)  # Matched content
+        style = match.group(1)
+        matched_text = match.group(2)
 
-        # Apply formatting based on style
         run = paragraph.add_run(matched_text)
-        if style in ("***", "___"):  # Bold italic
+        if style in ("***", "___"):
             run.bold = True
             run.italic = True
-        elif style in ("**", "__"):  # Bold
+        elif style in ("**", "__"):
             run.bold = True
-        elif style in ("*", "_"):  # Italic
+        elif style in ("*", "_"):
             run.italic = True
 
-        # Update position
         pos = match.end()
 
-    # Add any remaining text after the last match
     if pos < len(text):
         paragraph.add_run(text[pos:])
+
+
+def set_cell_background(cell, fill_hex: str):
+    """
+    Set background color of a table cell.
+    fill_hex should be a hex RGB string WITHOUT '#', e.g., 'C6E0B4'.
+    """
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    shd = tcPr.find(qn('w:shd'))
+    if shd is None:
+        shd = OxmlElement('w:shd')
+        tcPr.append(shd)
+    shd.set(qn('w:val'), 'clear')
+    shd.set(qn('w:color'), 'auto')
+    shd.set(qn('w:fill'), fill_hex)
+
+
+def status_to_color_hex(status: str) -> str:
+    """
+    Map a status string to a light background color.
+    - done/ok/closed -> green
+    - later -> grey
+    - anything else (incl. open) -> orange
+    """
+    s = (status or "").lower().strip()
+    if s in {"done", "ok", "closed"}:
+        return "C6E0B4"  # light green
+    if s == "later":
+        return "D9D9D9"  # light grey
+    return "F8CBAD"      # light orange
 
 
 def create_word_table(comments, output_filename="revision_table.docx"):
@@ -143,18 +204,20 @@ def create_word_table(comments, output_filename="revision_table.docx"):
     hdr_cells[2].text = "Response"
 
     # Populate table rows with formatted Markdown content
-    for comment_number, comment_text, response_text in comments:
+    for comment_number, comment_text, response_text, status in comments:
         row_cells = table.add_row().cells
         row_cells[0].text = comment_number
 
-        # Add formatted Markdown text for comment and response
+        # Comment cell
         comment_paragraph = row_cells[1].paragraphs[0]
         add_markdown_text(comment_paragraph, comment_text)
 
+        # Response cell (with background color by status)
         response_paragraph = row_cells[2].paragraphs[0]
         add_markdown_text(response_paragraph, response_text)
+        set_cell_background(row_cells[2], status_to_color_hex(status))
 
-    # Set page orientation to landscape
+    # Set page orientation to landscape (swap width/height)
     section = doc.sections[0]
     new_width, new_height = section.page_height, section.page_width
     section.page_width = new_width
@@ -166,7 +229,6 @@ def create_word_table(comments, output_filename="revision_table.docx"):
 
 
 def main() -> None:
-
     # Prompt user to select a file
     files = get_files_in_current_directory()
     questions = [
@@ -181,3 +243,7 @@ def main() -> None:
     # Parse comments and create Word table
     comments = parse_comments(lines)
     create_word_table(comments)
+
+
+if __name__ == "__main__":
+    main()
