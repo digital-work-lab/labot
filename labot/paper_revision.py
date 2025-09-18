@@ -3,9 +3,9 @@ import re
 
 import inquirer
 from docx import Document
-from docx.shared import Inches
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.shared import Inches
 
 
 # Function to list only markdown files in the current directory, excluding paper.md and CONTRIBUTING.md
@@ -55,7 +55,11 @@ def parse_comments(lines):
         line = raw_line.rstrip("\n")
 
         # Detect start/end of multiline HTML comments
-        if not in_multiline_comment and line.strip().startswith("<!--") and not line.strip().endswith("-->"):
+        if (
+            not in_multiline_comment
+            and line.strip().startswith("<!--")
+            and not line.strip().endswith("-->")
+        ):
             in_multiline_comment = True
 
         if in_multiline_comment:
@@ -131,7 +135,7 @@ def add_markdown_text(paragraph, text):
     pos = 0
     for match in re.finditer(r"(\*\*\*|___|__|\*\*|\*|_)(.+?)\1", text):
         if match.start() > pos:
-            paragraph.add_run(text[pos: match.start()])
+            paragraph.add_run(text[pos : match.start()])
 
         style = match.group(1)
         matched_text = match.group(2)
@@ -158,13 +162,13 @@ def set_cell_background(cell, fill_hex: str):
     """
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
-    shd = tcPr.find(qn('w:shd'))
+    shd = tcPr.find(qn("w:shd"))
     if shd is None:
-        shd = OxmlElement('w:shd')
+        shd = OxmlElement("w:shd")
         tcPr.append(shd)
-    shd.set(qn('w:val'), 'clear')
-    shd.set(qn('w:color'), 'auto')
-    shd.set(qn('w:fill'), fill_hex)
+    shd.set(qn("w:val"), "clear")
+    shd.set(qn("w:color"), "auto")
+    shd.set(qn("w:fill"), fill_hex)
 
 
 def status_to_color_hex(status: str) -> str:
@@ -179,7 +183,7 @@ def status_to_color_hex(status: str) -> str:
         return "C6E0B4"  # light green
     if s == "later":
         return "D9D9D9"  # light grey
-    return "F8CBAD"      # light orange
+    return "F8CBAD"  # light orange
 
 
 def create_word_table(comments, output_filename="revision_table.docx"):

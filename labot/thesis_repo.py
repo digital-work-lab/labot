@@ -16,6 +16,7 @@ from PyPDF2 import PdfReader
 
 import labot.monitor_email
 import labot.thesis
+import labot.utils
 from labot.constants import ThesisStatus
 
 
@@ -31,11 +32,9 @@ class ThesisRepo:
             raise OSError("The GITHUB_TOKEN environment variable is not set or empty.")
 
         # Paths
-        if not os.path.isdir("theses"):
-            raise OSError(
-                "The 'theses' directory does not exist in the current working directory."
-            )
-        theses_path = Path.cwd() / "theses"
+        if Path.cwd().name != "theses-confidential":
+            raise OSError("Current working directory must be 'theses-confidential'.")
+        theses_path = Path.cwd()  # / "theses"
         assert theses_path.is_dir(), f"The directory {theses_path} does not exist."
 
         # Theses
@@ -215,15 +214,7 @@ class ThesisRepo:
 
         # TODO : also check whether we already have a thesis (bachelor/master) for that student!
 
-    def create_thesis_file(self, data: dict) -> Path:
-
-        # determine next_id from theses repo (or from the last file in the directory)
-        next_id = 1
-        for file in os.listdir("theses"):
-            if file.endswith(".md"):
-                file_id = int(file.split("_")[0])
-                if file_id >= next_id:
-                    next_id = file_id + 1
+    def create_thesis_file(self, data: dict, dir_path: Path) -> Path:
 
         name_split = data["student"].split(", ")
         last_name = name_split[0]
@@ -231,34 +222,33 @@ class ThesisRepo:
         work_time_months = data["work_time_months"]
         date_of_registration = data["date_of_registration"]
 
-        file_name = f"{str(next_id).zfill(3)}_{last_name}_{first_name}.md"
-        file_path = Path("theses") / file_name.replace(" ", "_")
+        file_path = dir_path / "notes.md"
 
         file_content = f"""---
-    student: {last_name}, {first_name}
-    title: "{data['Topic']}"
-    level: "{data['Level']}"
-    student_id: {data['student_id']}
-    status: registered
-    supervisor: geritwagner
-    degree_program: WI
-    industry_partner: False
-    date_of_registration: '{date_of_registration}'
-    work_time_months: {work_time_months}
-    date_of_actual_submission: ""
-    plagiarism_check_result: ""
-    deadline_for_the_review: ""
-    date_review_created: ""
-    ---
+student: {last_name}, {first_name}
+title: "{data['Topic']}"
+level: "{data['Level']}"
+student_id: {data['student_id']}
+status: registered
+supervisor: geritwagner
+degree_program: WI
+industry_partner: False
+date_of_registration: '{date_of_registration}'
+work_time_months: {work_time_months}
+date_of_actual_submission: ""
+plagiarism_check_result: ""
+deadline_for_the_review: ""
+date_review_created: ""
+---
 
-    # {data['Topic']}
+# {data['Topic']}
 
-    ```mermaid
-    gantt
-        title Progress, {data['student']}
-        dateFormat  YYYY-MM-DD
-        section Registration
-    ```"""
+```mermaid
+gantt
+    title Progress, {data['student']}
+    dateFormat  YYYY-MM-DD
+    section Registration
+```"""
 
         with open(file_path, "w", encoding="utf-8") as file_ob:
             file_ob.write(file_content)
@@ -282,7 +272,7 @@ class ThesisRepo:
                 registration["student"].split(",")[0].replace(" ", "_").lower()
             )
 
-            repo = git.Repo(Path.cwd())
+            repo = git.Repo(labot.utils.get_git_dir())
 
             g = Github(self.GITHUB_TOKEN)
             gh_repo = g.get_repo(self.REPO_NAME)
@@ -295,7 +285,26 @@ class ThesisRepo:
 
             repo.git.checkout("-b", branch_name)
 
-            file_path = self.create_thesis_file(registration)
+            name_split = registration["student"].split(", ")
+            last_name = name_split[0]
+            first_name = name_split[1] if len(name_split) > 1 else ""
+
+            # determine next_id from thesis directories (format: 031_Uzair_Janjua)
+            next_id = 1
+            theses_dir = Path.cwd()
+            for entry in theses_dir.iterdir():
+                if entry.is_dir() and re.match(r"^\d{3}_.+", entry.name):
+                    try:
+                        dir_id = int(entry.name.split("_")[0])
+                        if dir_id >= next_id:
+                            next_id = dir_id + 1
+                    except ValueError:
+                        continue
+            dir_name = f"{str(next_id).zfill(3)}_{last_name}_{first_name}"
+            dir_path = Path.cwd() / dir_name
+            dir_path.mkdir(exist_ok=True)
+
+            file_path = self.create_thesis_file(registration, dir_path)
             repo.git.add(file_path)
 
             original_path = Path.cwd() / registration["word_file"]
@@ -533,9 +542,23 @@ class ThesisRepo:
         if choice == "s":
             registrations = self.get_open_registrations()
         if choice == "l":
-            registrations = [
-                {"repository": "", "word_file": "NAME  topic confirmation.docx"}
-            ]
+            docx_files = list(Path.cwd().glob("*.docx"))
+            if not docx_files:
+                print("No .docx files found in the current directory.")
+                return
+            elif len(docx_files) == 1:
+                word_file = docx_files[0]
+            else:
+                print("Multiple .docx files found:")
+                for idx, file in enumerate(docx_files, 1):
+                    print(f"{idx}: {file.name}")
+                selection = input("Select the file number to use: ")
+                try:
+                    word_file = docx_files[int(selection) - 1]
+                except (ValueError, IndexError):
+                    print("Invalid selection.")
+                    return
+            registrations = [{"repository": "", "word_file": word_file}]
 
         # TODO: for manually initiated issues, attach the file/have it uploaded separately (PULL-REQUEST)
 
@@ -544,7 +567,7 @@ class ThesisRepo:
         # Run the action regularly and create the issue + upload the word document.
         # extract information for validation, and add check(boxes) + results of automated checks
         # TODO : include a link to the repository,
-
+        print(registrations)
         self.process_registrations(registrations)
 
         # list_registration_issues(self.GITHUB_TOKEN)

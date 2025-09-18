@@ -939,6 +939,7 @@ xychart-beta
 
     def run_spellcheck_and_manage_issue(self, wordlist_path=".wordlist.txt") -> None:
         import language_tool_python
+
         issue_title = "Spellcheck Report"
 
         # Load custom wordlist
@@ -1077,7 +1078,7 @@ xychart-beta
         if self.REPO_NAME in ["work_hub"]:
             self._run_knowledge_repo_checks()
         # if self.REPO_NAME == "handbook":
-            # self.run_spellcheck_and_manage_issue()
+        # self.run_spellcheck_and_manage_issue()
         if self.REPO_NAME == "theses":
             self._run_theses_checks()
 

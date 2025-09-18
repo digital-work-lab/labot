@@ -2,6 +2,7 @@ import json
 import os
 import re
 from pathlib import Path
+
 from git import Repo
 
 CONFIG_PATH = Path.home() / ".labot/config.json"
@@ -9,17 +10,20 @@ CONFIG_PATH = Path.home() / ".labot/config.json"
 START_MARKER = "<!-- labot local-cronjob -->"
 END_MARKER = "<!-- END -->"
 
+
 def load_config():
     if not CONFIG_PATH.exists():
         raise FileNotFoundError(f"Settings file not found: {CONFIG_PATH}")
-    with open(CONFIG_PATH, "r") as f:
+    with open(CONFIG_PATH) as f:
         config = json.load(f)
     return config
 
+
 def parse_volume_issue(name):
     """Parse '43_2' into (43, 2)."""
-    match = re.match(r'^(\d+)_(\d+)$', name)
+    match = re.match(r"^(\d+)_(\d+)$", name)
     return (int(match.group(1)), int(match.group(2))) if match else None
+
 
 def find_latest_issue(journal_path):
     """Return the latest volume/issue or volume-only entry."""
@@ -40,7 +44,9 @@ def find_latest_issue(journal_path):
         if entry.isdigit():
             volume = int(entry)
             sub_entries = list((journal_path / entry).iterdir())
-            sub_issues = [int(e.name) for e in sub_entries if e.is_dir() and e.name.isdigit()]
+            sub_issues = [
+                int(e.name) for e in sub_entries if e.is_dir() and e.name.isdigit()
+            ]
             if sub_issues:
                 issue = max(sub_issues)
                 latest = max(latest, (volume, issue))
@@ -50,14 +56,22 @@ def find_latest_issue(journal_path):
 
     return latest if latest != (0, 0) else None
 
+
 def format_latest(latest):
-    return f"{latest[0]}_{latest[1]}" if latest and latest[1] > 0 else (str(latest[0]) if latest else "No valid issues found")
+    return (
+        f"{latest[0]}_{latest[1]}"
+        if latest and latest[1] > 0
+        else (str(latest[0]) if latest else "No valid issues found")
+    )
+
 
 def main():
     import colrev.env.local_index
 
     journal_folders = colrev.env.local_index.LocalIndex().get_curations()
-    journal_folders = [folder / Path("data/pdfs") for folder in journal_folders if folder.is_dir()]
+    journal_folders = [
+        folder / Path("data/pdfs") for folder in journal_folders if folder.is_dir()
+    ]
 
     results = []
     for journal_folder in sorted(journal_folders):
@@ -73,7 +87,9 @@ def main():
         markdown_table += f"| {journal} | {latest} |\n"
 
     config = load_config()
-    jour_page = Path(config["handbook_path"]) / Path("docs/20-research/22-literature.md")
+    jour_page = Path(config["handbook_path"]) / Path(
+        "docs/20-research/22-literature.md"
+    )
     content = jour_page.read_text(encoding="utf-8")
 
     # Replace content between START_MARKER and END_MARKER (inclusive of markers, but we keep them)
@@ -105,10 +121,13 @@ def main():
         repo.git.add(str(jour_page))
         # avoid failing when nothing changed elsewhere
         if repo.is_dirty(untracked_files=True):
-            repo.git.commit("-m", "Update PDF Collection table (automated)", "--no-verify")
+            repo.git.commit(
+                "-m", "Update PDF Collection table (automated)", "--no-verify"
+            )
             repo.remote(name="origin").push()
     else:
         print("No changes to apply.")
+
 
 if __name__ == "__main__":
     main()
