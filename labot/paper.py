@@ -53,12 +53,12 @@ class Paper:
 
     def _update_metadata(self) -> None:
         """Ensure required metadata fields are present and updated."""
-        if "project" not in self.metadata:
-            self.metadata["project"] = {}
-        if "status" not in self.metadata["project"]:
-            self.metadata["project"]["status"] = "writing"
-        if "started" not in self.metadata["project"]:
-            self.metadata["project"]["started"] = datetime.now().strftime("%Y-%m-%d")
+        # if "project" not in self.metadata:
+        #     self.metadata["project"] = {}
+        # if "status" not in self.metadata["project"]:
+        #     self.metadata["project"]["status"] = "writing"
+        # if "started" not in self.metadata["project"]:
+        #     self.metadata["project"]["started"] = datetime.now().strftime("%Y-%m-%d")
         if "manuscriptrepository" in self.metadata["project"]:
             repo_url = self.metadata["project"]["manuscriptrepository"]
             if repo_url.startswith("https://github.com/"):
