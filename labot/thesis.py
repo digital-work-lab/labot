@@ -43,6 +43,7 @@ class Thesis:
         plagiarism_check_result: str,
         supervisor: str,
         title: str,
+        filename: str,
     ):
         self.student = student
         self.id = id  # [:3]
@@ -60,7 +61,8 @@ class Thesis:
         self.plagiarism_check_result = plagiarism_check_result
         self.supervisor = supervisor
         self.title = title
-        self.review_filename = "review.md"
+        self.filename = Path(filename)
+        self.review_filename = self.filename.parent / Path("review.md")
 
     def __str__(self) -> str:
         return f"{self.student} - {self.title} - {self.status}"
@@ -384,13 +386,15 @@ def load_theses(theses_path: Path = Path("theses")) -> list:
     # iterate over all md files in the theses directory
     theses = []
     for thesis_file in Path(theses_path).rglob("*/notes.md"):
-        # Extract YAML header and validate
-        yaml_header = thesis_file.read_text().split("---")[1]
-        data = yamale.make_data(content=yaml_header)
-        data[0][0]["id"] = thesis_file.parent.name
-        # theses.append(data[0][0])
-        theses.append(Thesis(**data[0][0]))
-
+        try:
+            # Extract YAML header and validate
+            yaml_header = thesis_file.read_text().split("---")[1]
+            data = yamale.make_data(content=yaml_header)
+            data[0][0]["id"] = thesis_file.parent.name
+            theses.append(Thesis(**data[0][0], filename=thesis_file))
+        except TypeError as exc:
+            print(exc)
+            raise Exception(f"TypeError in {thesis_file}") from exc
     return theses
 
 
@@ -399,7 +403,7 @@ def update_thesis_metadata(thesis: Thesis) -> None:
     # Update the yaml metadata of the thesis
 
     # Load the file
-    thesis_file = Path("theses") / Path(thesis.review_filename)
+    thesis_file = Path(thesis.filename)
     thesis_content = thesis_file.read_text()
 
     # Generate yaml header

@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 """Thesis repository commands."""
+import difflib
 import os
 import pprint
 import re
@@ -18,6 +19,19 @@ import labot.monitor_email
 import labot.thesis
 import labot.utils
 from labot.constants import ThesisStatus
+
+
+def _normalize(s: str) -> str:
+    # lowercase, collapse spaces/newlines and strip punctuation
+    s = s.lower()
+    s = re.sub(r"\s+", " ", s)
+    s = re.sub(r"[^\w\s]", "", s)
+    return s.strip()
+
+
+def _similar(a: str, b: str) -> float:
+    # 0..1 similarity
+    return difflib.SequenceMatcher(None, _normalize(a), _normalize(b)).ratio()
 
 
 class ThesisRepo:
@@ -207,7 +221,6 @@ class ThesisRepo:
         return registration_issues
 
     def consistency_checks(self, registration: Issue) -> None:
-
         # Check whether Date is after Zulassung Date
         if registration["date_of_registration"] < registration["Zulassung Date"]:
             raise ValueError("The date is before the Zulassung date.")
@@ -396,7 +409,82 @@ gantt
                 submissions.append(issue)
         return submissions
 
-    def _handle_submissions(self, new_submission: Issue, theses: list) -> None:
+    def _questionnaire_select_thesis(self, text: str, top_n: int = 5):
+        """
+        Ask the user to choose a thesis when no exact match was found.
+        Returns the chosen Thesis object or None.
+        """
+        norm_text = _normalize(text)
+
+        # Score candidates by (title similarity + student name presence/similarity)
+        scored = []
+        for t in self.theses:
+            if t.status != ThesisStatus.REGISTERED:
+                continue
+
+            title_score = _similar(t.title, norm_text)
+            # Use only the "Lastname" part before comma, as in your original code
+            student_last = t.student.split(",")[0] if t.student else ""
+            student_in_text = 1.0 if _normalize(student_last) in norm_text else 0.0
+            student_score = max(student_in_text, _similar(student_last, norm_text))
+
+            # Weighted score: tweak weights if you like
+            score = 0.7 * title_score + 0.3 * student_score
+            scored.append((score, t))
+
+        if not scored:
+            print("No registered theses to choose from.")
+            return None
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        candidates = scored[:top_n]
+
+        print("\nNo exact thesis match found. Please choose the best match:")
+        for i, (score, t) in enumerate(candidates, start=1):
+            print(
+                f"[{i}] {t.student} — {t.title}  (score: {score:.2f})  [status: {t.status}]"
+            )
+        print("[0] None of the above")
+
+        while True:
+            choice = input("Enter number: ").strip()
+            if choice.isdigit():
+                idx = int(choice)
+                if idx == 0:
+                    return None
+                if 1 <= idx <= len(candidates):
+                    return candidates[idx - 1][1]
+            print(f"Please enter a number between 0 and {len(candidates)}.")
+
+    def find_thesis_with_fallback(self, text: str):
+        """
+        Your original matching, plus a questionnaire fallback if nothing matches.
+        Returns Thesis or None.
+        """
+        thesis = None
+        for current_thesis in self.theses:
+            if current_thesis.status != ThesisStatus.REGISTERED:
+                continue
+
+            if current_thesis.student.split(",")[
+                0
+            ].lower() in text.lower() and current_thesis.title.lower().replace(
+                " ", ""
+            ) in text.lower().replace(
+                " ", ""
+            ).replace(
+                "\n", ""
+            ):
+                print(f"Found thesis: {current_thesis.to_dict()}")
+                thesis = current_thesis
+                break
+
+        if thesis is None:
+            thesis = self._questionnaire_select_thesis(text)
+
+        return thesis
+
+    def _handle_submissions(self, new_submission: Issue) -> None:
 
         print(new_submission)
         comments = list(new_submission.get_comments())
@@ -422,10 +510,6 @@ gantt
                 # Download of attachments problematic:
                 # https://github.com/cli/cli/issues/9046
 
-            else:
-                print("No PDF attachment found for this issue.")
-                return
-
             input("save as submission.pdf")
             submission_pdf = Path.cwd() / "submission.pdf"
             # submission_pdf = Path(
@@ -450,7 +534,7 @@ gantt
                 return
 
             thesis = None
-            for current_thesis in theses:
+            for current_thesis in self.theses:
                 if current_thesis.status != ThesisStatus.REGISTERED:
                     continue
 
@@ -467,6 +551,8 @@ gantt
                     thesis = current_thesis
                     break
 
+            thesis = self.find_thesis_with_fallback(text)
+
             if thesis is None:
                 print("No matching thesis found.")
                 return
@@ -476,8 +562,8 @@ gantt
 
             print("- Add file to repository")
             # rename submission.pdf to submissions/XXX_student.pdf
-            new_filename = thesis.filename.replace(".md", ".pdf")
-            new_path = Path.cwd() / "submissions" / new_filename
+
+            new_path = thesis.filename.parent / Path("submission.pdf")
             submission_pdf.rename(new_path)
             # update status in the thesis file
             thesis.status = ThesisStatus.SUBMITTED
@@ -497,7 +583,7 @@ gantt
 
             pdf_file_path = (
                 f"https://github.com/{self.REPO_NAME}/blob/main/submissions/"
-                + f"{thesis.filename.replace('.md', '.pdf')}"
+                + f"{str(thesis.filename).replace('.md', '.pdf')}"
             )
             notes_file_path = f"https://github.com/{self.REPO_NAME}/blob/main/theses/{thesis.filename}"
 
@@ -577,10 +663,6 @@ gantt
             f"Check thesis submissions (issues in https://github.com/{self.REPO_NAME}/issues)"
         )
 
-        theses_path = Path.cwd() / "theses"
-        assert theses_path.is_dir(), f"The directory {theses_path} does not exist."
-        theses = labot.thesis.load_theses(theses_path=theses_path)
-
         g = Github(self.GITHUB_TOKEN)
         repo = g.get_repo(self.REPO_NAME)
 
@@ -590,7 +672,7 @@ gantt
         if new_submissions:
             for new_submission in new_submissions:
 
-                self._handle_submissions(new_submission, theses)
+                self._handle_submissions(new_submission)
 
                 # TODO : add files to git
                 print("Temporary:")
