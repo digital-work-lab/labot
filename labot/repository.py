@@ -390,7 +390,7 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
                 # Create a pull request
                 pr = self.github_repo.create_pull(
                     title=pr_title,
-                    body="This PR was created using the colrev-sync command.",
+                    body="This PR was created by labot ([repository.py:main](https://github.com/digital-work-lab/labot/blob/main/labot/repository.py)), using the [colrev-sync](https://github.com/CoLRev-Environment/colrev-sync) package.",
                     head=new_branch,
                     base="main",
                 )
