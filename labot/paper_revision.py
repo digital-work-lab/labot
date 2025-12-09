@@ -1,6 +1,6 @@
 import os
 import re
-
+from pathlib import Path
 import inquirer
 from docx import Document
 from docx.oxml import OxmlElement
@@ -246,7 +246,7 @@ def main() -> None:
 
     # Parse comments and create Word table
     comments = parse_comments(lines)
-    create_word_table(comments)
+    create_word_table(comments, output_filename=Path(selected_file).with_suffix(".docx"))
 
 
 if __name__ == "__main__":
