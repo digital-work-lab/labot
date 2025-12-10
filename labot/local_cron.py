@@ -2,6 +2,7 @@ import json
 import os
 import re
 from pathlib import Path
+from datetime import datetime, timezone, date
 
 from git import Repo
 
@@ -12,6 +13,11 @@ CURATED_BASE = Path("/home/gerit/.colrev/curated_metadata")
 
 START_MARKER = "<!-- labot local-cronjob -->"
 END_MARKER = "<!-- END -->"
+
+NEXTCLOUD_BASE = (
+    "https://nc-2272638881871040784.nextcloud-ionos.com/"
+    "index.php/apps/files/files"
+)
 
 
 def load_config():
@@ -84,6 +90,131 @@ def find_latest_year_in_pdfs(pdf_dir: Path):
             latest_year = max(latest_year, year)
 
     return latest_year if latest_year > 0 else None
+
+
+# ---------------------------------------------------------------------------
+# last-modified helpers
+# ---------------------------------------------------------------------------
+def get_last_modified_date(path: Path) -> date | None:
+    """Return the last-modified date of a file as a date object."""
+    if not path.exists():
+        return None
+    mtime = path.stat().st_mtime
+    return datetime.fromtimestamp(mtime, tz=timezone.utc).date()
+
+
+def get_latest_pdf_modified_date(pdf_dir: Path) -> date | None:
+    """Return the latest last-modified date across all PDFs in pdf_dir."""
+    if not pdf_dir.is_dir():
+        return None
+
+    latest_mtime = None
+    for root, _, files in os.walk(pdf_dir):
+        for fname in files:
+            if not fname.lower().endswith(".pdf"):
+                continue
+            fpath = Path(root) / fname
+            mtime = fpath.stat().st_mtime
+            if latest_mtime is None or mtime > latest_mtime:
+                latest_mtime = mtime
+
+    if latest_mtime is None:
+        return None
+    return datetime.fromtimestamp(latest_mtime, tz=timezone.utc).date()
+
+
+def format_journal_date(d: date | None, today: date | None = None) -> str:
+    """Journal rules:
+    - <= 3 months (≈90 days): green (normal)
+    - <= 1 year (≈365 days): orange (bold)
+    - older: red (bold)
+    """
+    if d is None:
+        return "—"
+
+    if today is None:
+        today = date.today()
+
+    delta_days = (today - d).days
+    if delta_days <= 90:
+        return f'<span style="color:green">{d.isoformat()}</span>'
+    elif delta_days <= 365:
+        return f'<strong><span style="color:orange">{d.isoformat()}</span></strong>'
+    else:
+        return f'<strong><span style="color:red">{d.isoformat()}</span></strong>'
+
+
+def format_conference_date(d: date | None, today: date | None = None) -> str:
+    """Conference rules:
+    - <= 1 year (≈365 days): green (normal)
+    - > 1 year and <= 2 years (≈730 days): orange (bold)
+    - > 2 years: red (bold)
+    """
+    if d is None:
+        return "—"
+
+    if today is None:
+        today = date.today()
+
+    delta_days = (today - d).days
+    if delta_days <= 365:
+        return f'<span style="color:green">{d.isoformat()}</span>'
+    elif delta_days <= 730:
+        return f'<strong><span style="color:orange">{d.isoformat()}</span></strong>'
+    else:
+        return f'<strong><span style="color:red">{d.isoformat()}</span></strong>'
+
+
+# ---------------------------------------------------------------------------
+# git URL helpers
+# ---------------------------------------------------------------------------
+def _convert_remote_to_http(remote_url: str) -> str:
+    """Convert common Git remote formats to https://... form."""
+    if remote_url.startswith("git@github.com:"):
+        repo_part = remote_url[len("git@github.com:") :]
+        if repo_part.endswith(".git"):
+            repo_part = repo_part[:-4]
+        return f"https://github.com/{repo_part}"
+    if remote_url.startswith("https://github.com/"):
+        repo_part = remote_url[len("https://github.com/") :]
+        if repo_part.endswith(".git"):
+            repo_part = repo_part[:-4]
+        return f"https://github.com/{repo_part}"
+    # fallback: just strip .git
+    if remote_url.endswith(".git"):
+        remote_url = remote_url[:-4]
+    return remote_url
+
+
+def get_git_file_url(path: Path) -> str | None:
+    """Return a web URL to the given file based on its Git remote."""
+    try:
+        repo = Repo(path, search_parent_directories=True)
+    except Exception:
+        return None
+
+    if not repo.remotes:
+        return None
+
+    try:
+        remote = repo.remotes.origin
+    except AttributeError:
+        remote = repo.remotes[0]
+
+    remote_url = remote.url
+    http_base = _convert_remote_to_http(remote_url)
+
+    try:
+        rel_path = path.relative_to(Path(repo.working_tree_dir))
+    except ValueError:
+        rel_path = path.name
+
+    try:
+        branch = repo.active_branch.name
+    except Exception:
+        branch = "main"
+
+    return f"{http_base}/blob/{branch}/{rel_path.as_posix()}"
 
 
 # ---------------------------------------------------------------------------
@@ -162,37 +293,14 @@ def format_latest_conference(year):
 
 
 # ---------------------------------------------------------------------------
-# status comparison
+# main
 # ---------------------------------------------------------------------------
-def compare_record_vs_pdfs_journal(record_vi, pdf_vi):
-    if record_vi is None:
-        return "no vol/iss in records"
-    if pdf_vi is None:
-        return "missing PDFs for latest"
-    if pdf_vi >= record_vi:
-        return "✅ Up-to-date"
-    else:
-        return "📝 TODO"
-
-
-def compare_record_vs_pdfs_conference(record_year, pdf_year):
-    if record_year is None:
-        return "no year in records"
-    if pdf_year is None:
-        return "missing PDFs for latest year"
-    if pdf_year >= record_year:
-        return "✅ Up-to-date"
-    else:
-        return "📝 TODO"
-
-
 def main():
     config = load_config()
 
     results = []
 
-
-    print('Updating 22-literature')
+    print("Updating literature")
     # iterate over /home/gerit/.colrev/curated_metadata/<curation>
     for curation_dir in sorted(CURATED_BASE.iterdir()):
         if not curation_dir.is_dir():
@@ -214,50 +322,115 @@ def main():
         if curation_type == "journal":
             latest_rec = find_latest_from_records_journal(records)
             latest_pdf = find_latest_issue_in_pdfs(pdf_dir)
-            status = compare_record_vs_pdfs_journal(latest_rec, latest_pdf)
 
             latest_rec_str = format_latest_journal(latest_rec)
             latest_pdf_str = format_latest_journal(latest_pdf)
 
+            rec_last_mod = get_last_modified_date(records_file)
+            pdf_last_mod = get_latest_pdf_modified_date(pdf_dir)
+            rec_last_mod_str = format_journal_date(rec_last_mod)
+            pdf_last_mod_str = format_journal_date(pdf_last_mod)
+
         elif curation_type == "conference":
             latest_rec = find_latest_from_records_conference(records)
             latest_pdf = find_latest_year_in_pdfs(pdf_dir)
-            status = compare_record_vs_pdfs_conference(latest_rec, latest_pdf)
 
             latest_rec_str = format_latest_conference(latest_rec)
             latest_pdf_str = format_latest_conference(latest_pdf)
+
+            rec_last_mod = get_last_modified_date(records_file)
+            pdf_last_mod = get_latest_pdf_modified_date(pdf_dir)
+            rec_last_mod_str = format_conference_date(rec_last_mod)
+            pdf_last_mod_str = format_conference_date(pdf_last_mod)
 
         else:
             # unknown structure
             latest_rec_str = "—"
             latest_pdf_str = "—"
-            status = "unknown structure"
+            rec_last_mod_str = "—"
+            pdf_last_mod_str = "—"
+
+        records_url = get_git_file_url(records_file)
+        pdfs_url = NEXTCLOUD_BASE  # same base link for all
 
         results.append(
             {
                 "curation": curation_dir.name,
                 "type": curation_type,
-                "latest_records": latest_rec_str,
-                "latest_pdfs": latest_pdf_str,
-                "status": status,
+                "latest_records_value": latest_rec_str,
+                "latest_records_date": rec_last_mod_str,
+                "latest_pdfs_value": latest_pdf_str,
+                "latest_pdfs_date": pdf_last_mod_str,
+                "records_url": records_url,
+                "pdfs_url": pdfs_url,
             }
         )
 
-    # build markdown table (now with type column)
-    markdown_table = (
-        "| Curation | Type | Latest in records.bib | Latest in data/pdfs | Status |\n"
-    )
-    markdown_table += "|----------|------|------------------------|---------------------|--------|\n"
+    # build HTML table (split value / last-updated vertically; last cols right-aligned)
+    html_table = """
+<table class="table table-sm">
+  <colgroup>
+    <col style="width: 50%;">
+    <col style="width: 8%;">
+    <col style="width: 21%;">
+    <col style="width: 21%;">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Journal / Conference</th>
+      <th>Type</th>
+      <th style="text-align:right;">Latest in records.bib<br>(last updated)</th>
+      <th style="text-align:right;">Latest in data/pdfs<br>(last updated)</th>
+    </tr>
+  </thead>
+  <tbody>
+"""
     for row in results:
-        markdown_table += (
-            f"| {row['curation']} | {row['type']} | {row['latest_records']} | "
-            f"{row['latest_pdfs']} | {row['status']} |\n"
+        # records cell: separate value vs last-updated
+        rec_val = row["latest_records_value"]
+        rec_date = row["latest_records_date"]
+
+        if rec_val == "—" and rec_date == "—":
+            records_cell = "—"
+        else:
+            if row.get("records_url") and rec_val != "—":
+                rec_val_html = f'<a href="{row["records_url"]}">{rec_val}</a>'
+            else:
+                rec_val_html = rec_val
+            records_cell = (
+                f'<div>{rec_val_html}</div>'
+                f'<div style="font-size:0.85em;">{rec_date}</div>'
+            )
+
+        # pdfs cell: separate value vs last-updated
+        pdf_val = row["latest_pdfs_value"]
+        pdf_date = row["latest_pdfs_date"]
+
+        if pdf_val == "—" and pdf_date == "—":
+            pdfs_cell = "—"
+        else:
+            if row.get("pdfs_url") and pdf_val != "—":
+                pdf_val_html = f'<a href="{row["pdfs_url"]}">{pdf_val}</a>'
+            else:
+                pdf_val_html = pdf_val
+            pdfs_cell = (
+                f'<div>{pdf_val_html}</div>'
+                f'<div style="font-size:0.85em;">{pdf_date}</div>'
+            )
+
+        html_table += (
+            "    <tr>"
+            f"<td>{row['curation']}</td>"
+            f"<td>{row['type']}</td>"
+            f'<td style="text-align:right;">{records_cell}</td>'
+            f'<td style="text-align:right;">{pdfs_cell}</td>'
+            "</tr>\n"
         )
 
+    html_table += "  </tbody>\n</table>\n"
+
     # write into handbook page like before
-    jour_page = Path(config["handbook_path"]) / Path(
-        "docs/20-research/22-literature.md"
-    )
+    jour_page = Path(config["handbook_path"]) / Path("research/literature.qmd")
     content = jour_page.read_text(encoding="utf-8")
 
     block_re = re.compile(
@@ -265,7 +438,7 @@ def main():
         flags=re.IGNORECASE | re.DOTALL,
     )
 
-    replacement = f"{START_MARKER}\n\n{markdown_table}\n\n{END_MARKER}"
+    replacement = f"{START_MARKER}\n\n{html_table}\n\n{END_MARKER}"
 
     if block_re.search(content):
         new_content = block_re.sub(replacement, content, count=1)
