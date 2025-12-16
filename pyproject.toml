@@ -1,48 +1,50 @@
-[tool.poetry]
+[project]
 name = "labot"
 version = "0.1.0"
 description = "Labot (LAboratory BOT) supports handbook organizing, teaching, research etc."
-authors = ["Gerit Wagner <gerit.wagner@uni-bamberg.de>"]
-license = "MIT"
 readme = "README.md"
-packages = [{include = "labot"}]
+requires-python = ">=3.10,<3.13"
+license = { text = "MIT" }
+authors = [
+  { name = "Gerit Wagner", email = "gerit.wagner@uni-bamberg.de" },
+]
+dependencies = [
+  "gitpython>=3.1.43,<4.0.0",
+  "click>=8.1.7,<9.0.0",
+  "pre-commit>=3.2.0,<4.0.0",
+  "colrev-sync==0.2.0",
+  "docx-mailmerge>=0.5.0,<0.6.0",
+  "pygithub>=2.5.0,<3.0.0",
+  "python-docx>=1.1.2,<2.0.0",
+  "inquirer>=3.4.0,<4.0.0",
+  "pandas>=2.2.3,<3.0.0",
+  "yamale>=5.2.1,<6.0.0",
+  "openai>=1.58.1,<2.0.0",
+  "pypdf2>=3.0.1,<4.0.0",
+  "colrev>=0.14.0,<0.15.0",
+  "jinja2>=3.1.5,<4.0.0",
+  "exchangelib>=5.5.0,<6.0.0",
+  "pdfannots>=0.5,<0.6",
+  "language-tool-python>=2.9.4,<3.0.0",
+  "questionary>=2.1.1",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.10, <3.13"
-gitpython = "^3.1.43"
-click = "^8.1.7"
-pre-commit = "^3.2.0"
-colrev-sync = "0.2.0"
-docx-mailmerge = "^0.5.0"
-pygithub = "^2.5.0"
-python-docx = "^1.1.2"
-inquirer = "^3.4.0"
-pandas = "^2.2.3"
-yamale = "^5.2.1"
-openai = "^1.58.1"
-pypdf2 = "^3.0.1"
-colrev = "^0.14.0"
-jinja2 = "^3.1.5"
-exchangelib = "^5.5.0"
-pdfannots = "^0.5"
-language-tool-python = "^2.9.4"
-
-[tool.poetry.scripts]
+[project.scripts]
 labot = "labot.cli:main"
 
 [tool.mypy]
-python_version = 3.9
+python_version = "3.10"
 warn_unused_configs = true
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = [
-    "requests.*",
-    "yaml.*",
-    "pkg_resources.*",
+  "requests.*",
+  "yaml.*",
+  "pkg_resources.*",
 ]
 ignore_missing_imports = true
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
