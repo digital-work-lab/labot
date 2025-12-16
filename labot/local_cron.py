@@ -430,7 +430,7 @@ def main():
     html_table += "  </tbody>\n</table>\n"
 
     # write into handbook page like before
-    jour_page = Path(config["handbook_path"]) / Path("research/literature.qmd")
+    jour_page = Path(config["handbook_path"]) / Path("research/pdf_collection.qmd")
     content = jour_page.read_text(encoding="utf-8")
 
     block_re = re.compile(
