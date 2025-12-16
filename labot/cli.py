@@ -174,6 +174,17 @@ def local_cronjob(
 
     labot.local_cron.main()
 
+@main.command
+@click.pass_context
+def polish(
+    ctx: click.core.Context,
+) -> None:
+    "Polish files (using LLM)"
+    import labot.polish
+
+    labot.polish.main()
+
+
 
 @main.command()
 @click.pass_context
