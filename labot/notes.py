@@ -20,7 +20,7 @@ from colrev.constants import ENTRYTYPES
 from colrev.constants import Fields
 from colrev.constants import IDPattern
 from colrev.constants import RecordState
-from colrev.packages.crossref.src import crossref_api
+from colrev.packages.crossref.src.crossref_api import query_doi
 from colrev.writer.write_utils import write_file
 from git import Actor
 from git import Repo
@@ -110,7 +110,6 @@ class LabotNotesManager:
 
     def import_missing_references(self, missing_refs: List[str]) -> None:
         local_index = colrev.env.local_index.LocalIndex()
-        api = crossref_api.CrossrefAPI(url="https://api.crossref.org/")
 
         for ref_id in missing_refs:
             pdf_file = self.pdf_path / f"{ref_id}.pdf"
@@ -166,7 +165,7 @@ class LabotNotesManager:
 
             if Fields.DOI in record:
                 try:
-                    record = api.query_doi(doi=record[Fields.DOI]).data
+                    record = query_doi(doi=record[Fields.DOI]).data
                 except colrev_exceptions.RecordNotFoundInPrepSourceException:
                     pass
 
