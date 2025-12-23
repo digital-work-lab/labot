@@ -110,7 +110,7 @@ class LabotNotesManager:
 
     def import_missing_references(self, missing_refs: List[str]) -> None:
         local_index = colrev.env.local_index.LocalIndex()
-        api = crossref_api.CrossrefAPI(params={})
+        api = crossref_api.CrossrefAPI(url="https://api.crossref.org/")
 
         for ref_id in missing_refs:
             pdf_file = self.pdf_path / f"{ref_id}.pdf"
@@ -222,7 +222,13 @@ class LabotNotesManager:
                     repo.git.checkout("main")
                     repo.git.checkout("-b", branch)
                 else:
-                    repo.git.checkout("-b", branch)
+                    # does the branch already exist?
+                    exists = branch in [h.name for h in repo.heads]
+
+                    if exists:
+                        repo.git.checkout(branch)
+                    else:
+                        repo.git.checkout("-b", branch)
 
         try:
             repo.git.add(str(self.pdf_path) + "*")
@@ -240,6 +246,7 @@ class LabotNotesManager:
     def run(
         self, select_summaries: bool = False, add_missing_refs: bool = False
     ) -> None:
+        missing_refs = []
         if add_missing_refs:
             missing_refs = self.get_missing_references()
             print(f"Missing references: {len(missing_refs)}")
@@ -265,12 +272,21 @@ class LabotNotesManager:
 
 
 def check_notes_local() -> None:
-    LabotNotesManager(
-        pdf_path=Path("data/pdfs"),
-        papers_path=Path("data/obsidian/paper"),
-        references_path=Path("data/records.bib"),
-        concepts_path=Path("data/obsidian/concepts"),
-    ).run(select_summaries=True)
+
+    if Path("papers").exists() and Path("references.bib").exists():
+        LabotNotesManager(
+            pdf_path=Path("pdfs"),
+            papers_path=Path("papers"),
+            references_path=Path("references.bib"),
+            concepts_path=Path("concepts"),
+        ).run(select_summaries=True, add_missing_refs=True)
+    else:
+        LabotNotesManager(
+            pdf_path=Path("data/pdfs"),
+            papers_path=Path("data/obsidian/paper"),
+            references_path=Path("data/records.bib"),
+            concepts_path=Path("data/obsidian/concepts"),
+        ).run(select_summaries=True)
 
 
 def check_notes_github() -> None:

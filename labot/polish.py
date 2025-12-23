@@ -34,7 +34,6 @@ Important formatting rules:
 - Output ONLY the revised document content.
 """
 
-
 def choose_files(patterns):
     # Collect matching files
     files = []

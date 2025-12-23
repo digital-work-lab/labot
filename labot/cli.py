@@ -122,11 +122,11 @@ def paper(
 @click.option(
     "--github",
     is_flag=True,
-    help="Prep notes for github (e.g., work_hub)",
+    help="Prep notes for github (e.g., research-ub)",
 )
 @click.pass_context
 def notes(ctx: click.core.Context, github: bool) -> None:
-    """Process notes (e.g., work_hub)"""
+    """Process notes (e.g., research-ub)"""
     import labot.notes
 
     if github:
