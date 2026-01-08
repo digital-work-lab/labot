@@ -161,7 +161,8 @@ class LabotNotesManager:
                     record.pop(Fields.TEXT_FROM_PDF, None)
                     record.pop(Fields.NR_PAGES_IN_FILE, None)
                 except colrev_exceptions.InvalidPDFException:
-                    continue
+                    print("invalid pdf exception")
+                    pass
 
             if Fields.DOI in record:
                 try:
