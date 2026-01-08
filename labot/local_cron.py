@@ -429,39 +429,24 @@ def main():
 
     html_table += "  </tbody>\n</table>\n"
 
-    # write into handbook page like before
-    jour_page = Path(config["handbook_path"]) / Path("research/pdf_collection.qmd")
-    content = jour_page.read_text(encoding="utf-8")
 
-    block_re = re.compile(
-        r"(<!--\s*labot\s+local-cronjob\s*-->)(.*?)(<!--\s*END\s*-->)",
-        flags=re.IGNORECASE | re.DOTALL,
+    report_path = Path(config["handbook_path"]) / Path("assets/reports/pdf_collection_table.qmd")
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+
+    generated = (
+        "<!-- This file is generated. Do not edit by hand. -->\n\n"
+        f"{html_table}\n\n"
+        f"<!-- generated: {date.today().isoformat()} -->\n"
     )
 
-    replacement = f"{START_MARKER}\n\n{html_table}\n\n{END_MARKER}"
-
-    if block_re.search(content):
-        new_content = block_re.sub(replacement, content, count=1)
-    else:
-        appendix = (
-            "\n\n## Journals and Conferences\n\n"
-            "{: .resource }\n"
-            "> A selection of journal and conference papers is available "
-            "[on Nextcloud](https://nc-2272638881871040784.nextcloud-ionos.com/index.php/apps/files/files/373460?dir=/20-research/22_literature).\n\n"
-            "Overview of journals:\n\n"
-            f"{replacement}\n"
-        )
-        new_content = content.rstrip() + appendix
-
-    if new_content != content:
-        jour_page.write_text(new_content, encoding="utf-8")
+    old = report_path.read_text(encoding="utf-8") if report_path.exists() else ""
+    if generated != old:
+        report_path.write_text(generated, encoding="utf-8")
 
         repo = Repo(config["handbook_path"])
-        repo.git.add(str(jour_page))
+        repo.git.add(str(report_path))
         if repo.is_dirty(untracked_files=True):
-            repo.git.commit(
-                "-m", "Update PDF Collection table (automated)", "--no-verify"
-            )
+            repo.git.commit("-m", "Update PDF Collection table (automated)", "--no-verify")
             repo.remote(name="origin").push()
     else:
         print("No changes to apply.")
