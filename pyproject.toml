@@ -3,11 +3,9 @@ name = "labot"
 version = "0.1.0"
 description = "Labot (LAboratory BOT) supports handbook organizing, teaching, research etc."
 readme = "README.md"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10,<3.14"
 license = { text = "MIT" }
-authors = [
-  { name = "Gerit Wagner", email = "gerit.wagner@uni-bamberg.de" },
-]
+authors = [{ name = "Gerit Wagner", email = "gerit.wagner@uni-bamberg.de" }]
 dependencies = [
   "gitpython>=3.1.43,<4.0.0",
   "click>=8.1.7,<9.0.0",
@@ -21,7 +19,7 @@ dependencies = [
   "yamale>=5.2.1,<6.0.0",
   "openai>=1.58.1,<2.0.0",
   "pypdf2>=3.0.1,<4.0.0",
-  "colrev>=0.14.0,<0.15.0",
+  "colrev>=0.16.0",
   "jinja2>=3.1.5,<4.0.0",
   "exchangelib>=5.5.0,<6.0.0",
   "pdfannots>=0.5,<0.6",
@@ -38,11 +36,7 @@ warn_unused_configs = true
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = [
-  "requests.*",
-  "yaml.*",
-  "pkg_resources.*",
-]
+module = ["requests.*", "yaml.*", "pkg_resources.*"]
 ignore_missing_imports = true
 
 [build-system]

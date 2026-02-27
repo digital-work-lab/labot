@@ -248,10 +248,11 @@ def get_thesis() -> Thesis:
 
     theses_data = load_theses(
         theses_path=Path(
-            "/home/gerit/ownCloud/data/teaching/theses/theses-confidential"
+            "/home/gerit/repos/theses-confidential"
         )
     )
 
+    print("\nCollecting students with date_of_actual_submission != '' and status != 'archived\n")
     student_choices = {
         f"{thesis.student} ({thesis.student_id})": thesis.student_id
         for thesis in theses_data
@@ -346,7 +347,7 @@ def generate_review(thesis: Thesis) -> None:
     metadata["Date"] = str(date.today())
 
     # Populate the template
-    template_1 = "/home/gerit/ownCloud/data/labot/labot/review_template.docx"
+    template_1 = "/home/gerit/repos/labot/labot/review_template.docx"
     document_1 = MailMerge(template_1)
 
     # Add required fields for the merge

@@ -30,6 +30,7 @@ Tasks:
 
 Important formatting rules:
 - Preserve the original file format (Markdown / plain text).
+- Do not remove line breaks.
 - Do NOT wrap the output in explanations or comments.
 - Output ONLY the revised document content.
 """

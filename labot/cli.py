@@ -191,8 +191,8 @@ def polish(
 def version(
     ctx: click.core.Context,
 ) -> None:
-    """Show colrev version."""
+    """Show labot version."""
 
     from importlib.metadata import version
 
-    print(f'colrev version {version("colrev")}')
+    print(f'labot version {version("labot")}')
