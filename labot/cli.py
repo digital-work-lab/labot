@@ -86,11 +86,6 @@ def thesis(
 
 @main.command  # (help_priority=1)
 @click.option(
-    "--init",
-    is_flag=True,
-    help="Initialize a paper repository",
-)
-@click.option(
     "--prep",
     is_flag=True,
     help="Prep a paper",
@@ -103,16 +98,13 @@ def thesis(
 @click.pass_context
 def paper(
     ctx: click.core.Context,
-    init: bool,
     prep: bool,
     revise: bool,
 ) -> None:
     "Paper utils (init, prep, ...)"
     import labot.paper
 
-    if init:
-        labot.paper.init()
-    elif prep:
+    if prep:
         labot.paper.prep()
     elif revise:
         labot.paper.revise()
