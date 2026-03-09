@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
+import glob
 import os
 import sys
-import glob
 import time
 from pathlib import Path
 
+import openai
 import questionary
 from openai import OpenAI
-import openai
 
 
 def get_openai_client():
@@ -34,6 +34,7 @@ Important formatting rules:
 - Do NOT wrap the output in explanations or comments.
 - Output ONLY the revised document content.
 """
+
 
 def choose_files(patterns):
     # Collect matching files
@@ -83,14 +84,18 @@ def revise_text(client, text: str, max_retries: int = 5) -> str:
             return resp.choices[0].message.content
 
         except openai.RateLimitError as e:
-            wait_for = 2 ** attempt
+            wait_for = 2**attempt
             print(f"  ⚠️ Rate limit hit, retrying in {wait_for}s... ({e})")
             time.sleep(wait_for)
 
         except openai.APIError as e:
             status_code = getattr(e, "status_code", None)
-            if status_code is not None and 500 <= status_code < 600 and attempt < max_retries - 1:
-                wait_for = 2 ** attempt
+            if (
+                status_code is not None
+                and 500 <= status_code < 600
+                and attempt < max_retries - 1
+            ):
+                wait_for = 2**attempt
                 print(f"  ⚠️ Server error {status_code}, retrying in {wait_for}s...")
                 time.sleep(wait_for)
             else:

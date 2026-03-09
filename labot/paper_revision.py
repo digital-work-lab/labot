@@ -1,11 +1,13 @@
 import os
 import re
 from pathlib import Path
+
 import inquirer
 from docx import Document
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Inches, Pt
+from docx.shared import Inches
+from docx.shared import Pt
 
 
 # Function to list only markdown files in the current directory, excluding paper.md and CONTRIBUTING.md
@@ -132,6 +134,7 @@ def parse_comments(lines):
 
 # ---------- NEW: markdown paragraph + hard-break handling ----------
 
+
 def _lines_to_markdown_paragraph(lines: list[str]) -> str:
     """
     Convert a list of lines (no empty lines) into a single paragraph string.
@@ -201,6 +204,7 @@ def split_markdown_into_paragraphs(block: str) -> list[str]:
 
 
 # ---------- UPDATED: markdown-to-docx writer ----------
+
 
 def _add_markdown_runs(paragraph, text: str) -> None:
     """
@@ -299,9 +303,8 @@ def _fill_cell_with_markdown(cell, text: str) -> None:
 
     for para_text in paragraphs[1:]:
         p = cell.add_paragraph()
-        p.paragraph_format.space_after = Pt(6)        # same spacing
+        p.paragraph_format.space_after = Pt(6)  # same spacing
         add_markdown_text(p, para_text)
-
 
 
 def create_word_table(comments, output_filename="revision_table.docx"):
@@ -362,7 +365,9 @@ def main() -> None:
 
     # Parse comments and create Word table
     comments = parse_comments(lines)
-    create_word_table(comments, output_filename=Path(selected_file).with_suffix(".docx"))
+    create_word_table(
+        comments, output_filename=Path(selected_file).with_suffix(".docx")
+    )
 
 
 if __name__ == "__main__":

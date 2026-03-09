@@ -174,6 +174,7 @@ def local_cronjob(
 
     labot.local_cron.main()
 
+
 @main.command
 @click.pass_context
 def polish(
@@ -183,7 +184,6 @@ def polish(
     import labot.polish
 
     labot.polish.main()
-
 
 
 @main.command()

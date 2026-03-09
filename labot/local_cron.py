@@ -1,12 +1,13 @@
 import json
 import os
 import re
+from datetime import date
+from datetime import datetime
+from datetime import timezone
 from pathlib import Path
-from datetime import datetime, timezone, date
-
-from git import Repo
 
 import colrev.loader.load_utils  # as required
+from git import Repo
 
 CONFIG_PATH = Path.home() / ".labot/config.json"
 CURATED_BASE = Path("/home/gerit/.colrev/curated_metadata")
@@ -15,8 +16,7 @@ START_MARKER = "<!-- labot local-cronjob -->"
 END_MARKER = "<!-- END -->"
 
 NEXTCLOUD_BASE = (
-    "https://nc-2272638881871040784.nextcloud-ionos.com/"
-    "index.php/apps/files/files"
+    "https://nc-2272638881871040784.nextcloud-ionos.com/index.php/apps/files/files"
 )
 
 
@@ -398,7 +398,7 @@ def main():
             else:
                 rec_val_html = rec_val
             records_cell = (
-                f'<div>{rec_val_html}</div>'
+                f"<div>{rec_val_html}</div>"
                 f'<div style="font-size:0.85em;">{rec_date}</div>'
             )
 
@@ -414,7 +414,7 @@ def main():
             else:
                 pdf_val_html = pdf_val
             pdfs_cell = (
-                f'<div>{pdf_val_html}</div>'
+                f"<div>{pdf_val_html}</div>"
                 f'<div style="font-size:0.85em;">{pdf_date}</div>'
             )
 
@@ -429,8 +429,9 @@ def main():
 
     html_table += "  </tbody>\n</table>\n"
 
-
-    report_path = Path(config["handbook_path"]) / Path("assets/reports/pdf_collection_table.qmd")
+    report_path = Path(config["handbook_path"]) / Path(
+        "assets/reports/pdf_collection_table.qmd"
+    )
     report_path.parent.mkdir(parents=True, exist_ok=True)
 
     generated = (
@@ -446,7 +447,9 @@ def main():
         repo = Repo(config["handbook_path"])
         repo.git.add(str(report_path))
         if repo.is_dirty(untracked_files=True):
-            repo.git.commit("-m", "Update PDF Collection table (automated)", "--no-verify")
+            repo.git.commit(
+                "-m", "Update PDF Collection table (automated)", "--no-verify"
+            )
             repo.remote(name="origin").push()
     else:
         print("No changes to apply.")

@@ -246,13 +246,15 @@ class Thesis:
 def get_thesis() -> Thesis:
     # Load theses from YAML files
 
-    theses_data = load_theses(
-        theses_path=Path(
-            "/home/gerit/repos/theses-confidential"
-        )
-    )
+    THESES_PATH = Path("/home/gerit/repos/theses-confidential")
+    if not THESES_PATH.is_dir():
+        raise Exception(f"{THESES_PATH} does not exist")
 
-    print("\nCollecting students with date_of_actual_submission != '' and status != 'archived\n")
+    theses_data = load_theses(theses_path=THESES_PATH)
+
+    print(
+        "\nCollecting students with date_of_actual_submission != '' and status != 'archived\n"
+    )
     student_choices = {
         f"{thesis.student} ({thesis.student_id})": thesis.student_id
         for thesis in theses_data
