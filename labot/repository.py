@@ -127,6 +127,7 @@ class Repository:
     def _check_dangling_assets(self) -> None:
 
         dangling_assets = self._find_dangling_assets()
+        issue_labels = ["automated-issue", "report"]
         if not dangling_assets:
             print("No dangling assets found.")
 
@@ -154,12 +155,14 @@ class Repository:
             if not existing_issue and dangling_assets:
                 # Create a new issue if it does not exist
                 new_issue = self.github_repo.create_issue(
-                    title=issue_title, body=dangling_assets_content
+                    title=issue_title,
+                    body=dangling_assets_content,
+                    labels=issue_labels,
                 )
                 print(f"New issue created: {new_issue.html_url}")
 
             if existing_issue and dangling_assets:
-                existing_issue.edit(body=dangling_assets_content)
+                existing_issue.edit(body=dangling_assets_content, labels=issue_labels)
                 print(f"Issue updated: {existing_issue.html_url}")
             if existing_issue and not dangling_assets:
                 existing_issue.edit(state="closed")
