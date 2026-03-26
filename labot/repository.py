@@ -37,6 +37,7 @@ yaml.add_representer(
 asset_link_pattern = re.compile(r"!\[.*?\]\((.*?)\)")
 img_src_pattern = re.compile(r'<img\s[^>]*src="([^"]+)"', re.IGNORECASE)
 a_href_pattern = re.compile(r'<a\s[^>]*href="([^"]+)"', re.IGNORECASE)
+md_link_pattern = re.compile(r"(?<!\!)\[(.*?)\]\((.*?)\)")
 
 
 class Repository:
@@ -96,6 +97,9 @@ class Repository:
                         content = f.read()
                         # Find all asset links in the markdown file
                         links = asset_link_pattern.findall(content)
+                        links.extend(
+                            match[1] for match in md_link_pattern.findall(content)
+                        )
                         links.extend(img_src_pattern.findall(content))
                         links.extend(a_href_pattern.findall(content))
                         for link in links:
