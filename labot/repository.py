@@ -38,6 +38,8 @@ asset_link_pattern = re.compile(r"!\[.*?\]\((.*?)\)")
 img_src_pattern = re.compile(r'<img\s[^>]*src="([^"]+)"', re.IGNORECASE)
 a_href_pattern = re.compile(r'<a\s[^>]*href="([^"]+)"', re.IGNORECASE)
 md_link_pattern = re.compile(r"(?<!\!)\[(.*?)\]\((.*?)\)")
+http_md_link_pattern = re.compile(r"(\[([^\]]+)\]\((https?://[^\)]+)\))(\{[^}]*\})?")
+html_link_pattern = re.compile(r"\[([^\]]+)\]\((?!https?://)([^\)]+\.html)\)")
 
 
 class Repository:
@@ -184,6 +186,239 @@ class Repository:
 
         except Exception as e:
             print(f"Error: {e}")
+
+    def _iter_markdown_files(self) -> list[Path]:
+        return [
+            file_path
+            for file_path in Path(".").glob("**/*.md")
+            if ".git/" not in str(file_path)
+        ]
+
+    def _check_target_blank_violations(self) -> dict[str, int]:
+        violations: dict[str, int] = {}
+        for file_path in self._iter_markdown_files():
+            content = file_path.read_text(encoding="utf-8")
+            if "marp: true" in content[0:100]:
+                continue
+
+            file_violations = 0
+            for match in http_md_link_pattern.finditer(content):
+                url = match.group(3)
+                existing_attrs = match.group(4) or ""
+                if (
+                    "img.shields.io" in url
+                    or url.endswith(".png")
+                    or url.endswith(".svg")
+                ):
+                    continue
+                if 'target="_blank"' not in existing_attrs:
+                    file_violations += 1
+
+            if file_violations:
+                violations[str(file_path)] = file_violations
+        return violations
+
+    def _check_internal_html_links(self) -> dict[str, list[str]]:
+        missing_by_file: dict[str, list[str]] = {}
+        base_dir = Path.cwd()
+
+        for file_path in self._iter_markdown_files():
+            content = file_path.read_text(encoding="utf-8")
+            missing_files: list[str] = []
+
+            for _, html_link in html_link_pattern.findall(content):
+                if "output/" in html_link:
+                    continue
+                md_link = html_link.replace(".html", ".md")
+                if "{{ site.baseurl }}/" in md_link:
+                    md_file_path = base_dir / Path(
+                        md_link.replace("{{ site.baseurl }}/", "")
+                    )
+                else:
+                    md_file_path = file_path.parent / md_link
+
+                if not md_file_path.exists():
+                    missing_files.append(str(md_file_path))
+
+            if missing_files:
+                missing_by_file[str(file_path)] = missing_files
+
+        return missing_by_file
+
+    def _check_external_links(self) -> dict[str, object]:
+        failed_links: dict[str, list[dict[str, str]]] = {}
+        summary = {
+            "total": 0,
+            "successful": 0,
+            "timeouts": 0,
+            "redirected": 0,
+            "excluded": 0,
+            "unknown": 0,
+            "errors": 0,
+        }
+        ignore_patterns = self._load_lychee_ignore_patterns()
+
+        for file_path in self._iter_markdown_files():
+            content = file_path.read_text(encoding="utf-8")
+            file_failures: list[dict[str, str]] = []
+
+            for match in http_md_link_pattern.finditer(content):
+                url = match.group(3)
+                summary["total"] += 1
+                if (
+                    "img.shields.io" in url
+                    or url.endswith(".png")
+                    or url.endswith(".svg")
+                ):
+                    summary["excluded"] += 1
+                    continue
+                if self._is_ignored_external_link(url, ignore_patterns):
+                    summary["excluded"] += 1
+                    continue
+                if any(failure["url"] == url for failure in file_failures):
+                    continue
+                try:
+                    response = requests.head(url, timeout=10, allow_redirects=True)
+                    status_code = response.status_code
+                    if status_code >= 400 or status_code == 405:
+                        response = requests.get(url, timeout=10, allow_redirects=True)
+                        status_code = response.status_code
+                    if status_code >= 400:
+                        summary["errors"] += 1
+                        file_failures.append({"url": url, "status": str(status_code)})
+                    elif response.history:
+                        summary["redirected"] += 1
+                    else:
+                        summary["successful"] += 1
+                except requests.Timeout:
+                    summary["timeouts"] += 1
+                    summary["errors"] += 1
+                    file_failures.append({"url": url, "status": "timeout"})
+                except requests.RequestException:
+                    summary["unknown"] += 1
+                    summary["errors"] += 1
+                    file_failures.append({"url": url, "status": "request-failed"})
+
+            if file_failures:
+                failed_links[str(file_path)] = file_failures
+
+        return {"summary": summary, "failed_links": failed_links}
+
+    def _load_lychee_ignore_patterns(self) -> list[re.Pattern]:
+        ignore_file = Path(".lycheeignore")
+        if not ignore_file.exists():
+            return []
+
+        patterns = []
+        for line in ignore_file.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            try:
+                patterns.append(re.compile(stripped))
+            except re.error:
+                print(f"Invalid regex in .lycheeignore: {stripped}")
+        return patterns
+
+    def _is_ignored_external_link(
+        self, url: str, ignore_patterns: list[re.Pattern]
+    ) -> bool:
+        return any(pattern.search(url) for pattern in ignore_patterns)
+
+    def _create_or_update_report_issue(
+        self, *, title: str, body: str, labels: list[str]
+    ) -> None:
+        issues = self.github_repo.get_issues(state="open")
+        existing_issue = next((issue for issue in issues if issue.title == title), None)
+
+        if existing_issue:
+            existing_issue.edit(body=body, labels=labels)
+            print(f"Issue updated: {existing_issue.html_url}")
+        else:
+            new_issue = self.github_repo.create_issue(
+                title=title,
+                body=body,
+                labels=labels,
+            )
+            print(f"New issue created: {new_issue.html_url}")
+
+    def _close_issue_if_open(self, title: str) -> None:
+        issues = self.github_repo.get_issues(state="open")
+        existing_issue = next((issue for issue in issues if issue.title == title), None)
+        if existing_issue:
+            existing_issue.edit(state="closed")
+            print(f"Issue closed: {existing_issue.html_url}")
+
+    def _run_link_checks(self) -> None:
+        issue_labels = ["automated-issue", "report"]
+
+        target_blank_violations = self._check_target_blank_violations()
+        if target_blank_violations:
+            body_lines = [
+                "## External link target attribute report",
+                "",
+                "The following files contain HTTP(S) markdown links without `target=\"_blank\"`:",
+                "",
+            ]
+            for file_name, count in target_blank_violations.items():
+                body_lines.append(f"- `{file_name}`: {count} link(s)")
+            self._create_or_update_report_issue(
+                title="External link formatting report",
+                body="\n".join(body_lines),
+                labels=issue_labels,
+            )
+            self.VALID = False
+        else:
+            self._close_issue_if_open("External link formatting report")
+
+        missing_internal_links = self._check_internal_html_links()
+        if missing_internal_links:
+            body_lines = ["## Broken internal links report", ""]
+            for file_name, missing_files in missing_internal_links.items():
+                body_lines.append(f"### `{file_name}`")
+                body_lines.extend([f"- `{missing}`" for missing in missing_files])
+                body_lines.append("")
+            self._create_or_update_report_issue(
+                title="Broken internal links report",
+                body="\n".join(body_lines),
+                labels=issue_labels,
+            )
+            self.VALID = False
+        else:
+            self._close_issue_if_open("Broken internal links report")
+
+        external_link_report = self._check_external_links()
+        failed_external_links = external_link_report["failed_links"]
+        summary = external_link_report["summary"]
+        if failed_external_links:
+            body_lines = [
+                "## Summary",
+                "| Status | Count |",
+                "|---------------|-------|",
+                f"| 🔍 Total | {summary['total']} |",
+                f"| ✅ Successful | {summary['successful']} |",
+                f"| ⏳ Timeouts | {summary['timeouts']} |",
+                f"| 🔀 Redirected | {summary['redirected']} |",
+                f"| 👻 Excluded | {summary['excluded']} |",
+                f"| ❓ Unknown | {summary['unknown']} |",
+                f"| 🚫 Errors | {summary['errors']} |",
+                "",
+                "## Errors per input",
+            ]
+            for file_name, failures in failed_external_links.items():
+                body_lines.append(f"### `{file_name}`")
+                body_lines.extend(
+                    [f"* [{f['status']}] [{f['url']}]({f['url']})" for f in failures]
+                )
+                body_lines.append("")
+            self._create_or_update_report_issue(
+                title="Link Checker Report",
+                body="\n".join(body_lines),
+                labels=issue_labels,
+            )
+            self.VALID = False
+        else:
+            self._close_issue_if_open("Link Checker Report")
 
     def _detect_event_type(self) -> str:
         event_name = os.getenv("GITHUB_EVENT_NAME")
@@ -1088,6 +1323,8 @@ xychart-beta
         # self.run_spellcheck_and_manage_issue()
         if self.REPO_NAME == "theses":
             self._run_theses_checks()
+
+        self._run_link_checks()
 
         self._update_labot_file()
 
