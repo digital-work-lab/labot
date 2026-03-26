@@ -195,8 +195,11 @@ class Repository:
         ]
 
     def _check_target_blank_violations(self) -> dict[str, int]:
+        ignored_files = {"README.md", "CONTRIBUTING.md", "release-checklist.md"}
         violations: dict[str, int] = {}
         for file_path in self._iter_markdown_files():
+            if file_path.name in ignored_files:
+                continue
             content = file_path.read_text(encoding="utf-8")
             if "marp: true" in content[0:100]:
                 continue
