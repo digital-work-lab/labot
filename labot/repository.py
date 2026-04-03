@@ -360,7 +360,7 @@ class Repository:
             body_lines = [
                 "## External link target attribute report",
                 "",
-                "The following files contain HTTP(S) markdown links without `target=\"_blank\"`:",
+                'The following files contain HTTP(S) markdown links without `target="_blank"`:',
                 "",
             ]
             for file_name, count in target_blank_violations.items():
@@ -693,13 +693,18 @@ Please copy the [latest version](https://github.com/digital-work-lab/labot/blob/
                     print("'make pdf' rule not found in Makefile.")
                     self.VALID = False
 
-        if not os.path.isfile("paper.md"):
-            print("No 'paper.md' file found in the repository.")
+        paper_path = ""
+        if os.path.isfile("paper.md"):
+            paper_path = "paper.md"
+        elif os.path.isfile("paper.qmd"):
+            paper_path = "paper.qmd"
+        else:
+            print("No 'paper.md/qmd' file found in the repository.")
             self.VALID = False
             return
 
         try:
-            paper = labot.paper.Paper("paper.md", self.local_repo, self.github_repo)
+            paper = labot.paper.Paper(paper_path, self.local_repo, self.github_repo)
 
             # Note: trigger on status changes because this is what users are aware of
             if paper.just_published():
