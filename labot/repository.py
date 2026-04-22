@@ -15,7 +15,7 @@ import colrev.loader.load_utils
 import requests
 import yaml
 from git import Repo
-from github import Github
+from github import Auth, Github
 from openai import OpenAI
 
 import labot.issue_chat
@@ -42,12 +42,17 @@ http_md_link_pattern = re.compile(r"(\[([^\]]+)\]\((https?://[^\)]+)\))(\{[^}]*\
 html_link_pattern = re.compile(r"\[([^\]]+)\]\((?!https?://)([^\)]+\.html)\)")
 
 
-MAX_BODY = 65000  # stay slightly below limit
+MAX_BODY = 65000  # stay slightly below the GitHub issue body limit (65536)
+TRUNCATION_SUFFIX = "\n\n... (truncated due to GitHub issue body length limit)"
+
 
 def truncate_body(content: str) -> str:
     if len(content) <= MAX_BODY:
         return content
-    return content[:MAX_BODY] + "\n\n... (truncated, see full report artifact)"
+    allowed_content_length = MAX_BODY - len(TRUNCATION_SUFFIX)
+    if allowed_content_length < 0:
+        return TRUNCATION_SUFFIX[:MAX_BODY]
+    return content[:allowed_content_length] + TRUNCATION_SUFFIX
 
 class Repository:
 
@@ -65,7 +70,9 @@ class Repository:
         # Retrieve the OpenAI API key from the environment
         self.OPENAI_KEY = os.getenv("OPENAI_KEY") or ""
 
-        self.github_repo = Github(self.GITHUB_TOKEN).get_repo(self.GITHUB_REPOSITORY)
+        self.github_repo = Github(auth=Auth.Token(self.GITHUB_TOKEN)).get_repo(
+            self.GITHUB_REPOSITORY
+        )
         self.local_repo = Repo(Path.cwd())
 
         self.VALID = True
@@ -176,7 +183,9 @@ class Repository:
                 print(f"New issue created: {new_issue.html_url}")
 
             if existing_issue and dangling_assets:
-                existing_issue.edit(body=dangling_assets_content, labels=issue_labels)
+                existing_issue.edit(
+                    body=truncate_body(dangling_assets_content), labels=issue_labels
+                )
                 print(f"Issue updated: {existing_issue.html_url}")
             if existing_issue and not dangling_assets:
                 existing_issue.edit(state="closed")
@@ -343,12 +352,12 @@ class Repository:
         existing_issue = next((issue for issue in issues if issue.title == title), None)
 
         if existing_issue:
-            existing_issue.edit(body=body, labels=labels)
+            existing_issue.edit(body=truncate_body(body), labels=labels)
             print(f"Issue updated: {existing_issue.html_url}")
         else:
             new_issue = self.github_repo.create_issue(
                 title=title,
-                body=body,
+                body=truncate_body(body),
                 labels=labels,
             )
             print(f"New issue created: {new_issue.html_url}")
