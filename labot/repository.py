@@ -42,6 +42,13 @@ http_md_link_pattern = re.compile(r"(\[([^\]]+)\]\((https?://[^\)]+)\))(\{[^}]*\
 html_link_pattern = re.compile(r"\[([^\]]+)\]\((?!https?://)([^\)]+\.html)\)")
 
 
+MAX_BODY = 65000  # stay slightly below limit
+
+def truncate_body(content: str) -> str:
+    if len(content) <= MAX_BODY:
+        return content
+    return content[:MAX_BODY] + "\n\n... (truncated, see full report artifact)"
+
 class Repository:
 
     def __init__(self) -> None:
@@ -159,10 +166,11 @@ class Repository:
                     break
 
             if not existing_issue and dangling_assets:
+                body = truncate_body(dangling_assets_content)
                 # Create a new issue if it does not exist
                 new_issue = self.github_repo.create_issue(
                     title=issue_title,
-                    body=dangling_assets_content,
+                    body=body,
                     labels=issue_labels,
                 )
                 print(f"New issue created: {new_issue.html_url}")
