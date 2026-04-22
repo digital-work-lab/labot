@@ -1334,7 +1334,7 @@ xychart-beta
 
         print(f"Repository '{self.REPO_NAME}' topics: {topics}")
 
-        if "research" in topics and self.REPO_NAME not in ["work_hub"]:
+        if "research" in topics and self.REPO_NAME not in ["research-hub"]:
             self._run_research_repo_checks()
         if "teaching-materials" in topics:
             self._run_teaching_repo_checks()
