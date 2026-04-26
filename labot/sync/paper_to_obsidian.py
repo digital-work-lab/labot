@@ -11,11 +11,9 @@ import colrev.writer.write_utils
 import pandas as pd
 from bib_dedupe.bib_dedupe import block, match, prep
 
-CITEKEY_PATTERN = re.compile(r"\[@([A-Za-z0-9_:-]+)")
-MULTI_CITE_PATTERN = re.compile(r";\s*@([A-Za-z0-9_:-]+)")
 CITATION_BLOCK_PATTERN = re.compile(r"\[[^\]]*@[^\]]*\]")
-CITATION_KEY_PATTERN = re.compile(r"@([A-Za-z0-9_:-]+)")
-FIGURE_MD_PATTERN = re.compile(r"!\[\]\(([^)]+)\)")
+CITATION_KEY_PATTERN = re.compile(r"(?<![A-Za-z0-9_:-])@([A-Za-z0-9_:-]+)\b")
+FIGURE_MD_PATTERN = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
 
 
 def load_paper(paper_path: Path) -> str:
@@ -114,9 +112,7 @@ def _remap_paper_citekeys(paper_content: str, remap: dict[str, str]) -> str:
 
 
 def extract_citations(paper_content: str) -> set[str]:
-    keys = set(CITEKEY_PATTERN.findall(paper_content))
-    keys.update(MULTI_CITE_PATTERN.findall(paper_content))
-    return keys
+    return set(CITATION_KEY_PATTERN.findall(paper_content))
 
 
 def filter_bib(records: dict[str, dict[str, Any]], cited_keys: set[str]) -> dict[str, dict[str, Any]]:
@@ -127,20 +123,55 @@ def scan_obsidian_notes(vault_path: Path) -> set[str]:
     return {path.stem for path in vault_path.rglob("*.md")}
 
 
-def transform_citations(paper_content: str, note_names: set[str]) -> tuple[str, int]:
+def transform_citations(paper_content: str, _note_names: set[str]) -> tuple[str, int]:
     transformed_links = 0
+    blocked_prefixes = ("fig", "tbl")
 
-    def repl(match_obj: re.Match[str]) -> str:
+    def _is_blocked_key(key: str) -> bool:
+        return key.lower().startswith(blocked_prefixes)
+
+    def block_repl(match_obj: re.Match[str]) -> str:
         nonlocal transformed_links
         block_text = match_obj.group(0)
-        keys = [k for k in CITATION_KEY_PATTERN.findall(block_text) if k in note_names]
+        keys = [key for key in CITATION_KEY_PATTERN.findall(block_text) if not _is_blocked_key(key)]
         if not keys:
             return block_text
-        backlinks = "".join(f"[[{key}]]" for key in keys)
-        transformed_links += len(keys)
+        unique_keys = list(dict.fromkeys(keys))
+        existing_links = set(re.findall(r"\[\[([^\]]+)\]\]", block_text))
+        keys_to_add = [key for key in unique_keys if key not in existing_links]
+        if not keys_to_add:
+            return block_text
+        backlinks = " " + " ".join(f"[[{key}]]" for key in keys_to_add)
+        transformed_links += len(keys_to_add)
         return f"{block_text}{backlinks}"
 
-    return CITATION_BLOCK_PATTERN.sub(repl, paper_content), transformed_links
+    transformed_content = CITATION_BLOCK_PATTERN.sub(block_repl, paper_content)
+    block_spans = [match.span() for match in CITATION_BLOCK_PATTERN.finditer(transformed_content)]
+
+    def _in_block(index: int) -> bool:
+        return any(start <= index < end for start, end in block_spans)
+
+    parts: list[str] = []
+    cursor = 0
+    for match_obj in CITATION_KEY_PATTERN.finditer(transformed_content):
+        start, end = match_obj.span()
+        key = match_obj.group(1)
+        if _in_block(start) or _is_blocked_key(key):
+            continue
+        if transformed_content[end:].startswith(f"[[{key}]]") or transformed_content[end:].startswith(
+            f" [[{key}]]"
+        ):
+            continue
+        parts.append(transformed_content[cursor:end])
+        parts.append(f" [[{key}]]")
+        cursor = end
+        transformed_links += 1
+
+    if not parts:
+        return transformed_content, transformed_links
+
+    parts.append(transformed_content[cursor:])
+    return "".join(parts), transformed_links
 
 
 def _list_figure_files(figures_dir: Path) -> list[Path]:
@@ -181,14 +212,15 @@ def sync_figures(
     missing_refs: list[str] = []
 
     def repl(match_obj: re.Match[str]) -> str:
-        raw = match_obj.group(1)
+        alt_text = match_obj.group(1)
+        raw = match_obj.group(2)
         rel = _normalize_figure_reference(raw)
         if rel is None:
             return match_obj.group(0)
         if not (source_figures_dir / rel).is_file():
             missing_refs.append(str(source_figures_dir / rel))
             return match_obj.group(0)
-        return f"![](assets/{project_id}/{rel.as_posix()})"
+        return f"![{alt_text}](../assets/{project_id}/{rel.as_posix()})"
 
     updated_content = FIGURE_MD_PATTERN.sub(repl, paper_content)
     return updated_content, len(copied_files), sorted(set(missing_refs))
