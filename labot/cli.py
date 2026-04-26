@@ -2,6 +2,8 @@
 """Command-line interface for Labot."""
 from __future__ import annotations
 
+from pathlib import Path
+
 import click
 
 
@@ -188,3 +190,52 @@ def version(
     from importlib.metadata import version
 
     print(f'labot version {version("labot")}')
+
+
+@main.command("sync-paper-to-obsidian")
+@click.option("--paper-path", type=click.Path(path_type=Path))
+@click.option("--bib-path", type=click.Path(path_type=Path))
+@click.option("--vault-path", type=click.Path(path_type=Path))
+@click.option("--project-id", type=str)
+@click.option("--dry-run", is_flag=True)
+@click.option("--verbose", is_flag=True)
+@click.pass_context
+def sync_paper_to_obsidian(
+    ctx: click.core.Context,
+    paper_path: Path | None,
+    bib_path: Path | None,
+    vault_path: Path | None,
+    project_id: str | None,
+    dry_run: bool,
+    verbose: bool,
+) -> None:
+    """Synchronize a Quarto paper repository with an Obsidian vault."""
+    from labot.sync.paper_to_obsidian import run_sync_pipeline
+
+    def prompt_path(message: str) -> Path:
+        from InquirerPy import inquirer
+
+        return Path(inquirer.filepath(message=message).execute()).expanduser()
+
+    def prompt_text(message: str) -> str:
+        from InquirerPy import inquirer
+
+        return inquirer.text(message=message).execute().strip()
+
+    if paper_path is None:
+        paper_path = prompt_path("Path to paper .qmd:")
+    if bib_path is None:
+        bib_path = prompt_path("Path to bibliography .bib:")
+    if vault_path is None:
+        vault_path = prompt_path("Path to Obsidian vault root:")
+    if project_id is None:
+        project_id = prompt_text("Project ID (e.g., lrdm):")
+
+    run_sync_pipeline(
+        paper_path=paper_path,
+        bib_path=bib_path,
+        vault_path=vault_path,
+        project_id=project_id,
+        dry_run=dry_run,
+        verbose=verbose,
+    )
