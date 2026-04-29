@@ -25,7 +25,7 @@ def load_bib(bib_path: Path) -> dict[str, dict[str, Any]]:
 
 
 def load_obsidian_bib(vault_path: Path) -> dict[str, dict[str, Any]]:
-    obsidian_bib_path = vault_path / "references" / "references.bib"
+    obsidian_bib_path = vault_path / "references.bib"
     if not obsidian_bib_path.is_file():
         return {}
     return colrev.loader.load_utils.load(filename=obsidian_bib_path)
@@ -61,6 +61,7 @@ def dedupe_and_sync_citekeys(
     obsidian_records: dict[str, dict[str, Any]],
 ) -> dict[str, str]:
     if not project_records or not obsidian_records:
+        print("No records loaded. Skipping")
         return {}
 
     project_df = _records_to_df(project_records, "project")
