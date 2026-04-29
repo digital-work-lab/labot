@@ -7,6 +7,7 @@ from typing import Any
 
 import click
 import colrev.loader.load_utils
+import colrev.record.record
 import colrev.writer.write_utils
 import pandas as pd
 from bib_dedupe.bib_dedupe import block, match, prep
@@ -93,11 +94,40 @@ def dedupe_and_sync_citekeys(
     matched_df = match(blocked_df, cpu=1, verbosity_level=0)
 
     remap: dict[str, str] = {}
+
+    def _format_apa_style(record: dict[str, Any]) -> str:
+        rec = colrev.record.record.Record(data=dict(record))
+        formatter = getattr(rec, "format_apa_style", None)
+        if callable(formatter):
+            return str(formatter())
+        return rec.get_citation_format()
+
     for pair in matched_df.to_dict("records"):
-        if pair.get("duplicate_label") != "duplicate":
-            continue
+        duplicate_label = pair.get("duplicate_label")
         source_1, key_1 = lookup.get(pair.get("ID_1"), (None, None))
         source_2, key_2 = lookup.get(pair.get("ID_2"), (None, None))
+        if duplicate_label == "maybe":
+            record_1 = (
+                project_records.get(key_1, {})
+                if source_1 == "project"
+                else obsidian_records.get(key_1, {})
+            )
+            record_2 = (
+                project_records.get(key_2, {})
+                if source_2 == "project"
+                else obsidian_records.get(key_2, {})
+            )
+            click.echo("\nPossible duplicate detected:")
+            click.echo(f"- {source_1}::{key_1}")
+            click.echo(f"  {_format_apa_style(record_1)}")
+            click.echo(f"- {source_2}::{key_2}")
+            click.echo(f"  {_format_apa_style(record_2)}")
+            if not click.confirm("Merge these records?", default=False):
+                continue
+            duplicate_label = "duplicate"
+
+        if duplicate_label != "duplicate":
+            continue
         if source_1 == "project" and source_2 == "obsidian":
             remap[key_1] = key_2
         if source_1 == "obsidian" and source_2 == "project":
