@@ -333,6 +333,9 @@ def run_sync_pipeline(
     cited_keys = extract_citations(remapped_content)
     filtered_records = filter_bib(remapped_records, cited_keys)
     missing_citekeys = sorted(cited_keys - set(remapped_records))
+    warning_missing_citekeys = [
+        key for key in missing_citekeys if not (key.startswith("fig:") or key.startswith("tbl:"))
+    ]
 
     note_names = scan_obsidian_notes(vault_path)
     linked_content, transformed_links = transform_citations(remapped_content, note_names)
@@ -350,8 +353,10 @@ def run_sync_pipeline(
     click.echo(f"Figures copied: {figures_copied}")
     click.echo(f"Links transformed: {transformed_links}")
 
-    if missing_citekeys:
-        click.echo(f"Warning: missing citekeys in bibliography: {', '.join(missing_citekeys)}")
+    if warning_missing_citekeys:
+        click.echo(
+            f"Warning: missing citekeys in bibliography: {', '.join(warning_missing_citekeys)}"
+        )
     if missing_figures:
         click.echo(f"Warning: missing figure files: {', '.join(missing_figures)}")
     unmatched = len(project_records) - len(remap)
