@@ -66,11 +66,27 @@ def dedupe_and_sync_citekeys(
 
     project_df = _records_to_df(project_records, "project")
     obsidian_df = _records_to_df(obsidian_records, "obsidian")
+
+    # Prevent within-source merges by assigning distinct search_set values.
+    #
+    # BibDedupe semantics:
+    # - records with the same search_set are not merged
+    # - matching/clustering only occurs across different search_set values
+    #
+    # This is useful here because:
+    # - project_records are assumed internally deduplicated
+    # - obsidian_records are assumed internally deduplicated
+    # - we only want cross-source synchronization matches
+    project_df["search_set"] = "project"
+    obsidian_df["search_set"] = "obsidian"
+
     dedupe_df = pd.concat([project_df, obsidian_df], ignore_index=True)
     lookup = {
         row["ID"]: (row["source"], row["source_key"])
         for row in dedupe_df.to_dict("records")
     }
+
+    print('Run duplicate detection')
 
     dedupe_df = prep(dedupe_df, cpu=1, verbosity_level=0)
     blocked_df = block(dedupe_df, cpu=1, verbosity_level=0)
