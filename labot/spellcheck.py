@@ -7,12 +7,33 @@ from collections import Counter
 from pathlib import Path
 import re
 import sys
+import os
 
 import requests
 
 LANGUAGETOOL_URL = "http://localhost:8081/v2/check"
 IGNORE_FILE = Path(".languagetool-ignore")
 
+
+def terminal_hyperlink(label: str, target: str) -> str:
+    """Return an OSC-8 terminal hyperlink when supported."""
+    if (
+        not sys.stdout.isatty()
+        or os.environ.get("TERM") == "dumb"
+        or os.environ.get("NO_HYPERLINKS")
+    ):
+        return label
+
+    return f"\033]8;;{target}\033\\{label}\033]8;;\033\\"
+
+
+def file_hyperlink(path: Path, label: str | None = None) -> str:
+    """Create a clickable terminal link to a local file."""
+    resolved_path = path.resolve()
+    return terminal_hyperlink(
+        label=label or str(path),
+        target=resolved_path.as_uri(),
+    )
 
 def load_ignored_terms() -> set[str]:
     """Load ignored terms from .languagetool-ignore."""
@@ -31,7 +52,9 @@ def remove_yaml_frontmatter(text: str) -> str:
 
 def remove_code_blocks(text: str) -> str:
     return re.sub(
-        r"(?ms)^[ \t]*(```|~~~).*?^[ \t]*\1[ \t]*$",
+        r"(?ms)^[ \t]*(?P<fence>`{3,}|~{3,})[^\r\n]*\r?\n"
+        r".*?"
+        r"^[ \t]*(?P=fence)[ \t]*\r?$",
         " ",
         text,
     )
@@ -65,6 +88,21 @@ def remove_latex(text: str) -> str:
 def normalize_whitespace(text: str) -> str:
     return re.sub(r"\s+", " ", text)
 
+def remove_markdown_links(text: str) -> str:
+    """Remove Markdown link targets while keeping visible link text."""
+    # Images: ![alt text](image.png) -> alt text
+    text = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", text)
+
+    # Inline links: [text](https://example.com) -> text
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+
+    # Reference-style link definitions: [id]: https://example.com "title" -> removed
+    text = re.sub(r"(?m)^[ \t]*\[[^\]]+\]:\s+\S+.*$", " ", text)
+
+    # Reference-style links: [text][id] -> text
+    text = re.sub(r"\[([^\]]+)\]\[[^\]]*\]", r"\1", text)
+
+    return text
 
 def should_ignore(problematic_text: str, ignored_terms: set[str]) -> bool:
     problematic_text = problematic_text.strip()
@@ -93,6 +131,32 @@ def should_ignore(problematic_text: str, ignored_terms: set[str]) -> bool:
 
     return False
 
+def separate_markdown_headings(text: str) -> str:
+    """Turn Markdown headings into sentence-like text to avoid false duplicate warnings."""
+    def replace_heading(match: re.Match[str]) -> str:
+        heading = match.group("heading").strip()
+
+        # Remove optional Quarto/Pandoc heading attributes:
+        # ## Title {#id .class}
+        heading = re.sub(r"\s+\{[^}]+\}\s*$", "", heading).strip()
+
+        # Remove optional closing ATX hashes:
+        # ## Title ##
+        heading = re.sub(r"\s+#+\s*$", "", heading).strip()
+
+        if not heading:
+            return " "
+
+        if heading[-1] not in ".!?:":
+            heading += "."
+
+        return f"\n{heading}\n\n"
+
+    return re.sub(
+        r"(?m)^[ \t]{0,3}#{1,6}[ \t]+(?P<heading>.+?)\s*$",
+        replace_heading,
+        text,
+    )
 
 def preprocess_text(text: str) -> str:
     text = remove_yaml_frontmatter(text)
@@ -102,6 +166,8 @@ def preprocess_text(text: str) -> str:
     text = remove_urls(text)
     text = remove_shortcodes(text)
     text = remove_latex(text)
+    text = remove_markdown_links(text)
+    text = separate_markdown_headings(text)
     return normalize_whitespace(text)
 
 
@@ -125,6 +191,8 @@ def resolve_files(*, all_files: bool, file: Path | None, interactive: bool) -> l
         return sorted(Path(".").rglob("*.qmd")) + sorted(Path(".").rglob("*.md"))
 
     return sorted(Path(".").rglob("*.qmd"))
+
+
 
 
 def main(*, all_files: bool = False, file: Path | None = None, interactive: bool = False) -> int:
@@ -166,7 +234,12 @@ def main(*, all_files: bool = False, file: Path | None = None, interactive: bool
 
             has_errors = True
             message = match.get("message", "Unknown issue")
-            print(f"{item}:{match.get('offset', 0)} {message}")
+
+            offset = match.get("offset", 0)
+            location_label = f"{item}:{offset}"
+            location_link = file_hyperlink(item, label=location_label)
+
+            print(f"{location_link} {message}")
             print(f"  problematic: {problematic_text}")
 
             replacements = match.get("replacements", [])
