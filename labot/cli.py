@@ -181,6 +181,29 @@ def polish(
 
 
 @main.command()
+@click.option("--all", "all_files", is_flag=True, help="Check all .qmd and .md files")
+@click.option("--file", type=click.Path(path_type=Path, exists=True), help="Check a specific file")
+@click.option("-i", "--interactive", is_flag=True, help="Interactively select a file")
+@click.pass_context
+def spellcheck(
+    ctx: click.core.Context,
+    all_files: bool,
+    file: Path | None,
+    interactive: bool,
+) -> None:
+    """Run spellcheck using a local LanguageTool server."""
+    import labot.spellcheck
+
+    raise SystemExit(
+        labot.spellcheck.main(
+            all_files=all_files,
+            file=file,
+            interactive=interactive,
+        )
+    )
+
+
+@main.command()
 @click.pass_context
 def version(
     ctx: click.core.Context,
