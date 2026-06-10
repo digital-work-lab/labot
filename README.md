@@ -13,6 +13,8 @@ labot thesis --submissions
 labot thesis --register
 labot thesis --grade
 
+labot references consolidate paper.pdf --mailto g.wagner@fs.de
+
 labot notes
 ```
 

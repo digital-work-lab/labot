@@ -180,6 +180,71 @@ def polish(
     labot.polish.main()
 
 
+@main.group()
+@click.pass_context
+def references(ctx: click.core.Context) -> None:
+    """Reference processing commands."""
+
+
+@references.command()
+@click.argument("input_path", type=click.Path(path_type=Path, exists=True))
+@click.option("-o", "--output", "output_path", type=click.Path(path_type=Path))
+@click.option("--report", "report_path", type=click.Path(path_type=Path))
+@click.option("--mailto", type=str)
+@click.option(
+    "--crossref-mode",
+    type=click.Choice(["auto", "colrev", "rest"]),
+    default="auto",
+    show_default=True,
+)
+@click.option("--auto-accept-threshold", type=float, default=0.92, show_default=True)
+@click.option("--non-interactive", is_flag=True)
+@click.option("--all", "display_all", is_flag=True)
+@click.option("--diagnostics", is_flag=True)
+@click.option("--diagnostics-limit", type=int, default=15, show_default=True)
+@click.option("--minimum-match-similarity", type=float, default=0.50, show_default=True)
+@click.option("--limit", "reference_limit", type=int, default=0, show_default=True)
+@click.pass_context
+def consolidate(
+    ctx: click.core.Context,
+    input_path: Path,
+    output_path: Path | None,
+    report_path: Path | None,
+    mailto: str | None,
+    crossref_mode: str,
+    auto_accept_threshold: float,
+    non_interactive: bool,
+    display_all: bool,
+    diagnostics: bool,
+    diagnostics_limit: int,
+    minimum_match_similarity: float,
+    reference_limit: int,
+) -> None:
+    """Consolidate references extracted from a paper PDF or GROBID TEI file."""
+    from typing import Literal, cast
+
+    from labot.references.consolidate_grobid_references import run
+
+    selected_crossref_mode = cast(Literal["auto", "colrev", "rest"], crossref_mode)
+
+    raise SystemExit(
+        run(
+            input_path=input_path,
+            output_path=output_path,
+            report_path=report_path,
+            mailto=mailto,
+            crossref_mode=selected_crossref_mode,
+            auto_accept_threshold=auto_accept_threshold,
+            non_interactive=non_interactive,
+            display_all=display_all,
+            diagnostics=diagnostics,
+            diagnostics_limit=diagnostics_limit,
+            minimum_match_similarity=minimum_match_similarity,
+            reference_limit=reference_limit,
+        )
+    )
+
+
 @main.command()
 @click.option("--all", "all_files", is_flag=True, help="Check all .qmd and .md files")
 @click.option("--file", type=click.Path(path_type=Path, exists=True), help="Check a specific file")
