@@ -1,6 +1,9 @@
 import os
 import re
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
+from typing import Iterator
 
 import inquirer
 from docx import Document
@@ -132,7 +135,25 @@ def parse_comments(lines):
     return comments
 
 
-# ---------- NEW: markdown paragraph + hard-break handling ----------
+class MarkdownBlockKind(Enum):
+    PARAGRAPH = "paragraph"
+    ORDERED_LIST_ITEM = "ordered-list-item"
+    UNORDERED_LIST_ITEM = "unordered-list-item"
+
+
+@dataclass(frozen=True)
+class MarkdownBlock:
+    kind: MarkdownBlockKind
+    text: str
+    list_number: int | None = None
+
+
+_LIST_ITEM_PATTERN = re.compile(
+    r"^\s*(?:(?P<number>\d+)(?:[.)])|(?P<bullet>[-*+]))\s+(?P<text>.*)$"
+)
+
+
+# ---------- markdown block + hard-break handling ----------
 
 
 def _lines_to_markdown_paragraph(lines: list[str]) -> str:
@@ -201,6 +222,63 @@ def split_markdown_into_paragraphs(block: str) -> list[str]:
         paragraphs.append(_lines_to_markdown_paragraph(current_lines))
 
     return paragraphs
+
+
+def _response_prefix_removed(line: str) -> str:
+    """Remove a response quote prefix while retaining significant trailing spaces."""
+    if line.lstrip().startswith("> "):
+        return line.lstrip()[2:]
+    return line
+
+
+def _markdown_blocks(text: str) -> Iterator[MarkdownBlock]:
+    """Yield prose and list items, joining source-wrapped lines within each block."""
+    current_lines: list[str] = []
+    current_kind = MarkdownBlockKind.PARAGRAPH
+    current_number: int | None = None
+
+    def flush() -> MarkdownBlock | None:
+        nonlocal current_lines
+        if not current_lines:
+            return None
+        result = MarkdownBlock(
+            current_kind,
+            _lines_to_markdown_paragraph(current_lines),
+            current_number,
+        )
+        current_lines = []
+        return result
+
+    for raw_line in text.splitlines():
+        line = _response_prefix_removed(raw_line)
+        if not line.strip():
+            pending = flush()
+            if pending:
+                yield pending
+            current_kind = MarkdownBlockKind.PARAGRAPH
+            current_number = None
+            continue
+
+        match = _LIST_ITEM_PATTERN.match(line)
+        if match:
+            pending = flush()
+            if pending:
+                yield pending
+            current_kind = (
+                MarkdownBlockKind.ORDERED_LIST_ITEM
+                if match.group("number")
+                else MarkdownBlockKind.UNORDERED_LIST_ITEM
+            )
+            current_number = (
+                int(match.group("number")) if match.group("number") else None
+            )
+            current_lines = [match.group("text")]
+        else:
+            current_lines.append(line)
+
+    pending = flush()
+    if pending:
+        yield pending
 
 
 # ---------- UPDATED: markdown-to-docx writer ----------
@@ -287,24 +365,60 @@ def status_to_color_hex(status: str) -> str:
     return "F8CBAD"  # light orange
 
 
+def _set_list_number(paragraph, number: int) -> None:
+    """Give an ordered-list paragraph its own numbering instance and start value."""
+    paragraph.style = "List Number"
+    style_num_id = paragraph.style.element.pPr.numPr.numId.val
+    numbering = paragraph.part.numbering_part.element
+    style_num = next(num for num in numbering.num_lst if num.numId == style_num_id)
+    abstract_id = style_num.abstractNumId.val
+    num_id = max((int(num.numId) for num in numbering.num_lst), default=0) + 1
+
+    num = OxmlElement("w:num")
+    num.set(qn("w:numId"), str(num_id))
+    abstract_num_id = OxmlElement("w:abstractNumId")
+    abstract_num_id.set(qn("w:val"), str(abstract_id))
+    num.append(abstract_num_id)
+    level_override = OxmlElement("w:lvlOverride")
+    level_override.set(qn("w:ilvl"), "0")
+    start_override = OxmlElement("w:startOverride")
+    start_override.set(qn("w:val"), str(number))
+    level_override.append(start_override)
+    num.append(level_override)
+    numbering.append(num)
+
+    num_properties = paragraph._p.get_or_add_pPr().get_or_add_numPr()
+    num_properties.get_or_add_ilvl().val = 0
+    num_properties.get_or_add_numId().val = num_id
+
+
+def _format_markdown_block(paragraph, block: MarkdownBlock) -> None:
+    paragraph.paragraph_format.space_after = Pt(6)
+    if block.kind is MarkdownBlockKind.ORDERED_LIST_ITEM:
+        # A fresh numbering instance guarantees the Markdown number is displayed
+        # and prevents Word from continuing a list from another table cell.
+        _set_list_number(paragraph, block.list_number or 1)
+    elif block.kind is MarkdownBlockKind.UNORDERED_LIST_ITEM:
+        paragraph.style = "List Bullet"
+    add_markdown_text(paragraph, block.text)
+
+
 def _fill_cell_with_markdown(cell, text: str) -> None:
     """
     Fill a table cell with markdown-like paragraphs.
     """
-    paragraphs = split_markdown_into_paragraphs(text)
-    if not paragraphs:
+    blocks = list(_markdown_blocks(text))
+    if not blocks:
         return
 
     # reuse the first paragraph in the cell
     first_para = cell.paragraphs[0]
     first_para.text = ""
-    first_para.paragraph_format.space_after = Pt(6)  # e.g., 6pt after each paragraph
-    add_markdown_text(first_para, paragraphs[0])
+    _format_markdown_block(first_para, blocks[0])
 
-    for para_text in paragraphs[1:]:
+    for block in blocks[1:]:
         p = cell.add_paragraph()
-        p.paragraph_format.space_after = Pt(6)  # same spacing
-        add_markdown_text(p, para_text)
+        _format_markdown_block(p, block)
 
 
 def create_word_table(comments, output_filename="revision_table.docx"):
