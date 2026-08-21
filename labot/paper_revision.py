@@ -432,9 +432,12 @@ def create_word_table(comments, output_filename="revision_table.docx"):
     table.autofit = False
 
     # Set column widths
-    table.columns[0].width = Inches(1.0)
-    table.columns[1].width = Inches(4.0)
-    table.columns[2].width = Inches(4.0)
+    column_widths = [Inches(1.4), Inches(3.6), Inches(3.6)]
+
+    for column, width in zip(table.columns, column_widths):
+        column.width = width
+        for cell in column.cells:
+            cell.width = width
 
     # Add header row
     hdr_cells = table.rows[0].cells
